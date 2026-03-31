@@ -1,0 +1,11 @@
+# Netlify configuration for Next.js
+# https://docs.netlify.com/configure-builds/file-based-configuration/
+
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# Next.js runtime is auto-detected; no plugin required for Next.js 15+

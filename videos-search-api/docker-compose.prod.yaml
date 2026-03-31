@@ -1,0 +1,137 @@
+version: "3.9"
+
+services:
+  dynamodb-local:
+    command: "-jar DynamoDBLocal.jar -sharedDb -dbPath ./data"
+    image: "amazon/dynamodb-local:2.0.0"
+    container_name: dynamodb-local
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - "./docker/dynamodb:/home/dynamodblocal/data"
+    working_dir: /home/dynamodblocal
+    networks:
+      - my-network
+
+  flask-app:
+    build: .
+    container_name: flask-app
+    restart: unless-stopped
+    command: gunicorn -b 0.0.0.0:5000 sev.app:bviral_app
+    environment:
+      FLASK_RUN_RELOAD: 1
+      PYTHONUNBUFFERED: 1
+      FLASK_APP: sev.app:bviral_app
+      FLASK_DEBUG: 0 # Set to 0 for production
+    env_file:
+      - .env
+    volumes:
+      - .:/sev
+    expose:
+      - "5000" # Changed from ports to expose - only accessible via SWAG
+    depends_on:
+      - dynamodb-local
+    networks:
+      - my-network
+
+  opensearch-node1:
+    image: opensearchproject/opensearch:3
+    container_name: opensearch-node1
+    environment:
+      - cluster.name=opensearch-cluster
+      - node.name=opensearch-node1
+      - discovery.seed_hosts=opensearch-node1,opensearch-node2
+      - cluster.initial_cluster_manager_nodes=opensearch-node1,opensearch-node2
+      - bootstrap.memory_lock=true
+      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
+      - OPENSEARCH_INITIAL_ADMIN_PASSWORD=${OPENSEARCH_INITIAL_ADMIN_PASSWORD}
+      - "DISABLE_INSTALL_DEMO_CONFIG=true"
+      - "DISABLE_SECURITY_PLUGIN=true"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    volumes:
+      - opensearch-data1:/usr/share/opensearch/data
+    ports:
+      - 9200:9200
+      - 9600:9600
+    networks:
+      - my-network
+
+  opensearch-node2:
+    image: opensearchproject/opensearch:3
+    container_name: opensearch-node2
+    environment:
+      - cluster.name=opensearch-cluster
+      - node.name=opensearch-node2
+      - discovery.seed_hosts=opensearch-node1,opensearch-node2
+      - cluster.initial_cluster_manager_nodes=opensearch-node1,opensearch-node2
+      - bootstrap.memory_lock=true
+      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
+      - OPENSEARCH_INITIAL_ADMIN_PASSWORD=${OPENSEARCH_INITIAL_ADMIN_PASSWORD}
+      - "DISABLE_INSTALL_DEMO_CONFIG=true"
+      - "DISABLE_SECURITY_PLUGIN=true"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    volumes:
+      - opensearch-data2:/usr/share/opensearch/data
+    networks:
+      - my-network
+
+  opensearch-dashboards:
+    image: opensearchproject/opensearch-dashboards:3
+    container_name: opensearch-dashboards
+    expose:
+      - "5601"
+    environment:
+      - 'OPENSEARCH_HOSTS=["http://opensearch-node1:9200","http://opensearch-node2:9200"]'
+      - "DISABLE_SECURITY_DASHBOARDS_PLUGIN=true"
+    networks:
+      - my-network
+
+  swag:
+    container_name: swag
+    image: ghcr.io/linuxserver/swag:2.7.0
+    cap_add:
+      - NET_ADMIN
+    environment:
+      PUID: 1000
+      PGID: 1000
+      TZ: Africa/Tunis
+      URL: videos-api.bv.media
+      VALIDATION: http
+      EMAIL: wassim.smcsoftware@gmail.com
+    volumes:
+      - ./swag-config:/config
+      - ./static:/static
+    ports:
+      - 443:443
+      - 80:80
+    restart: unless-stopped
+    depends_on:
+      - flask-app
+    networks:
+      - my-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  opensearch-data1:
+  opensearch-data2:
+
+networks:
+  my-network:
+    driver: bridge

@@ -1,0 +1,5 @@
+<mj-section padding="20px 0">
+  <mj-column>
+    <mj-image src="https://sda-assets.s3.amazonaws.com/bviral+lack+(1).png" alt="BVIRAL" align="center" width="150px" />
+  </mj-column>
+</mj-section>

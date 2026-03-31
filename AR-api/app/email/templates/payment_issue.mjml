@@ -1,0 +1,34 @@
+<mjml>
+  <mj-head>
+    {{ head_content|safe }}
+  </mj-head>
+  <mj-body background-color="#FFFFFF">
+    <!-- Header Section -->
+    {{ header_content|safe }}
+
+    <!-- Main Content Section -->
+    <mj-section padding="0 20px">
+      <mj-column>
+        <mj-text>
+          Hello {{ first_name }},
+        </mj-text>
+        <mj-text>
+          We received your payment but encountered an issue processing it on our side.
+        </mj-text>
+        <mj-text>
+          Please contact our support team and we will resolve this as soon as possible.
+        </mj-text>
+        <mj-text>
+          Thank you for your patience.
+        </mj-text>
+        <mj-text>
+          <a href="http://bviral.com">BVIRAL - Clearance Team</a>
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <!-- Footer Section -->
+    {{ footer_content|safe }}
+
+  </mj-body>
+</mjml>

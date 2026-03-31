@@ -1,0 +1,44 @@
+<mjml>
+  <mj-head>
+    {{ head_content|safe }}
+  </mj-head>
+  <mj-body background-color="#FFFFFF">
+    {{ header_content|safe }}
+
+    <mj-section padding="0 20px">
+      <mj-column>
+        <mj-text>
+          Hi {{ first_name }},
+        </mj-text>
+        <mj-text>
+          This email confirms that we have successfully received your request for a
+          custom quote for a content subscription with BVIRAL.
+        </mj-text>
+        <mj-text>
+          Our team is currently reviewing your details to put together a plan that
+          fits your specific channels and needs.
+        </mj-text>
+        <mj-text>
+          <strong>What happens next?</strong><br />
+          A member of the BVIRAL Team will review your request and get back to you
+          through this email thread as soon as possible with your custom pricing and
+          next steps.
+        </mj-text>
+        <mj-text>
+          In the meantime, if you have any additional questions or realize you
+          forgot to include a specific channel, feel free to email us at
+          <a href="mailto:sales@bviral.com">sales@bviral.com</a>.
+        </mj-text>
+        <mj-text>
+          We look forward to working with you!
+        </mj-text>
+        <mj-text>
+          Best,<br />
+          The BVIRAL Team
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    {{ footer_content|safe }}
+  </mj-body>
+</mjml>

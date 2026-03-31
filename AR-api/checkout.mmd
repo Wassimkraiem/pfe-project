@@ -1,0 +1,51 @@
+sequenceDiagram
+    autonumber
+    participant Frontend
+    participant API as Backend API
+    participant DB as Database
+    participant Stripe as Stripe
+    
+    Note over Frontend,Stripe: Phase 1: Checkout Creation
+    
+    Frontend->>API: POST /onboarding_sessions/checkout<br/>{email, plan, payment_flow_type}
+    API->>DB: Get session by email
+    DB-->>API: Session (step=PAGES)
+    
+    API->>API: Validate session in PAGES step
+    API->>API: Validate channels exist
+    API->>API: Map plan to Stripe price_id<br/>(monthly/yearly)
+    
+    API->>DB: Store payment_flow_type &<br/>price_id in checkout section
+    
+    API->>Stripe: checkout.Session.create<br/>{line_items.price, quantity, metadata}
+    Stripe-->>API: Checkout response with URL
+    
+    API-->>Frontend: {checkout_url, channels_count,<br/>payment_flow_type}
+    
+    Note over Frontend,Stripe: Phase 2: Payment Processing
+    
+    Frontend->>Stripe: Redirect to checkout URL
+    Note over Stripe: User completes payment<br/>on Stripe hosted page
+    
+    Stripe->>API: POST /webhooks<br/>(checkout.session.completed / invoice.payment_succeeded)
+    
+    API->>API: Verify Stripe-Signature
+    API->>API: Extract email & payment data<br/>from webhook payload
+    
+    API->>DB: mark_payment_received()<br/>- Store invoice_id, subscription_id<br/>- Store amount, currency<br/>- Set payment_received=true<br/>- Update step to ACCOUNT
+    
+    API-->>Stripe: 200 OK (acknowledge webhook)
+    
+    Stripe-->>Frontend: Redirect to /signup/?session_id={session_uuid}
+    
+    Note over Frontend,Stripe: Phase 3: Account Completion
+    
+    Frontend->>API: POST /onboarding_sessions/{uuid}/complete<br/>{account details}
+    
+    API->>DB: Validate payment_received=true
+    API->>API: Create user (Clerk + DB)
+    API->>DB: Create channel records
+    API->>DB: Create payment record<br/>from checkout data
+    API->>DB: Mark session COMPLETED
+    
+    API-->>Frontend: {user_id, channels_created,<br/>payment_id}

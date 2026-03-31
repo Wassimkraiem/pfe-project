@@ -1,0 +1,17 @@
+/.vscode/
+/conf/__pycache__/
+
+# Ignore Python cache files
+/sev/__pycache__/
+/sev/apps/videos/__pycache__/
+/sev/apps/videos/dynamo/__pycache__/
+/sev/apps/videos/opensearch/__pycache__/
+
+# Ignore environment variables file
+/.env
+
+# Ignore the docker directory
+/docker/
+
+*.pyc
+__pycache__/

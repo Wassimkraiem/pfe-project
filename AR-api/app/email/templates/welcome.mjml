@@ -1,0 +1,51 @@
+<mjml>
+  <mj-head>
+    {{ head_content|safe }}
+  </mj-head>
+  <mj-body background-color="#FFFFFF">
+    <!-- Header Section -->
+    {{ header_content|safe }}
+
+    <!-- Main Content Section -->
+    <mj-section padding="0 20px">
+      <mj-column>
+        <mj-text>
+          Hi {{ first_name }},
+        </mj-text>
+        <mj-text>
+          Your BVIRAL account has been successfully created! You can log in to your
+          dashboard at any time to access the content library, manage your billing
+          details, and view our FAQ.
+        </mj-text>
+        <mj-button
+          href="{{ dashboard_link }}"
+          background-color="#000000"
+          color="#FFFFFF"
+          font-size="14px"
+          border-radius="6px"
+          padding="10px 0"
+        >
+          Go to My Dashboard
+        </mj-button>
+        <mj-text>
+          <strong>Important Next Step:</strong> Please look for a separate email
+          from Canto. You’ll need to follow the link inside that email to set your
+          password - this is how you will access our library of 90,000+ videos.
+        </mj-text>
+        <mj-text>
+          If you ever need help navigating the library or have any questions as you
+          get started, you can reach our team at
+          <a href="mailto:sales@bviral.com">sales@bviral.com</a>.
+        </mj-text>
+        <mj-text>
+          Thank you,<br />
+          The BVIRAL Team
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <!-- Footer Section -->
+    {{ footer_content|safe }}
+
+  </mj-body>
+</mjml>

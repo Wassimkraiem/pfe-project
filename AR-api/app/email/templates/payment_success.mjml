@@ -1,0 +1,156 @@
+<mjml>
+  <mj-head>
+    {{ head_content|safe }}
+  </mj-head>
+  <mj-body background-color="#FFFFFF">
+    <!-- Header Section -->
+    {{ header_content|safe }}
+
+    <!-- Main Content Section -->
+    <mj-section padding="0 20px">
+      <mj-column>
+        <mj-text>
+          Hi {{ first_name }},
+        </mj-text>
+        <mj-text>
+          Thank you for your payment! Your subscription is now active, and you have
+          access to our library of 90,000+ rights-cleared videos.
+        </mj-text>
+
+        <!-- Signatory -->
+        {% if customer_email or signed_at %}
+        <mj-text padding-bottom="4px">
+          <strong>Signatory</strong>
+        </mj-text>
+        <mj-table>
+          {% if customer_email %}
+          <tr>
+            <td style="padding: 4px 16px 4px 0; color: #555555; white-space: nowrap; width: 110px;">Email</td>
+            <td style="padding: 4px 0; color: #000000;">{{ customer_email }}</td>
+          </tr>
+          {% endif %}
+          {% if signed_at %}
+          <tr>
+            <td style="padding: 4px 16px 4px 0; color: #555555; white-space: nowrap;">Signed at</td>
+            <td style="padding: 4px 0; color: #000000;">{{ signed_at }}</td>
+          </tr>
+          {% endif %}
+        </mj-table>
+        {% endif %}
+
+        <!-- Electronic Signature -->
+        {% if signature %}
+        <mj-text padding-bottom="4px">
+          <strong>Electronic Signature</strong>
+        </mj-text>
+        <mj-text padding-top="0" padding-bottom="4px" font-size="12px" color="#555555">
+          Agreed and signed by:
+        </mj-text>
+        <mj-text
+          padding="14px 16px"
+          container-background-color="#f5f5f5"
+          font-size="16px"
+          font-style="italic"
+          font-weight="600"
+          color="#000000"
+        >
+          {{ signature }}
+        </mj-text>
+        <mj-text font-size="12px" color="#555555" padding-top="4px">
+          By providing their electronic signature above, the signatory acknowledges
+          agreement to the BVIRAL Licensing Agreement.
+        </mj-text>
+        {% endif %}
+
+        <!-- Whitelisted Channels -->
+        {% if channels %}
+        <mj-text padding-bottom="4px">
+          <strong>Whitelisted Channels</strong>
+        </mj-text>
+        <mj-text padding-top="0">
+          <ol style="margin: 0; padding-left: 20px;">
+            {% for channel in channels %}
+            <li style="margin-bottom: 4px; color: #000000;">{{ channel }}</li>
+            {% endfor %}
+          </ol>
+        </mj-text>
+        {% endif %}
+
+        <!-- Access Fee -->
+        {% if amount_display or plan_label %}
+        <mj-text padding-bottom="4px">
+          <strong>Access Fee</strong>
+        </mj-text>
+        <mj-table>
+          {% if plan_label %}
+          <tr>
+            <td style="padding: 4px 16px 4px 0; color: #555555; white-space: nowrap; width: 110px;">Plan</td>
+            <td style="padding: 4px 0; color: #000000; font-weight: 600;">{{ plan_label }}</td>
+          </tr>
+          {% endif %}
+          {% if amount_display %}
+          <tr>
+            <td style="padding: 4px 16px 4px 0; color: #555555; white-space: nowrap;">Amount</td>
+            <td style="padding: 4px 0; color: #000000; font-weight: 600;">{{ amount_display }}</td>
+          </tr>
+          {% endif %}
+        </mj-table>
+        {% endif %}
+
+        <!-- Divider -->
+        <mj-divider border-color="#eeeeee" border-width="1px" padding="20px 0 10px 0" />
+
+        <mj-text>
+          <strong>Next Steps:</strong>
+        </mj-text>
+        <mj-text>
+          <ul style="margin: 0; padding-left: 18px;">
+            <li>
+              <strong>Finish your BVIRAL account:</strong> If you haven't already,
+              please follow the link below to set your password for the BVIRAL
+              Dashboard. This is where you can manage your subscription, channels,
+              and billing details.
+            </li>
+            <li>
+              <strong>Set up your library access:</strong> You will also receive a
+              separate email from Canto. Please follow the link in that email to set
+              a password for the content library—this is where you will browse and
+              download videos.
+            </li>
+            <li>
+              <strong>Agreement &amp; Receipt:</strong> We have attached a copy of
+              your signed licensing agreement and your receipt to this email for
+              your records.
+            </li>
+            <li>
+              <strong>Tax Note:</strong> In most cases, this subscription is a
+              necessary business expense and a tax write-off. We recommend
+              discussing this with your tax professional.
+            </li>
+          </ul>
+        </mj-text>
+        <mj-button
+          href="{{ complete_account_link }}"
+          background-color="#000000"
+          color="#FFFFFF"
+          font-size="14px"
+          border-radius="6px"
+          padding="10px 0"
+        >
+          Finish Setup &amp; Go to Dashboard
+        </mj-button>
+        <mj-text>
+          We're excited to have you as a partner!
+        </mj-text>
+        <mj-text>
+          Best,<br />
+          The BVIRAL Team
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <!-- Footer Section -->
+    {{ footer_content|safe }}
+
+  </mj-body>
+</mjml>

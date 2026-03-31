@@ -1,0 +1,45 @@
+<mjml>
+  <mj-head>
+    {{ head_content|safe }}
+  </mj-head>
+  <mj-body background-color="#FFFFFF">
+    {{ header_content|safe }}
+
+    <mj-section padding="0 20px">
+      <mj-column>
+        <mj-text>
+          Hi {{ first_name }},
+        </mj-text>
+        <mj-text>
+          Good news! Your custom quote for your BVIRAL subscription is ready.
+        </mj-text>
+        <mj-text>
+          Please follow the link below to review your details and complete checkout.
+          Be sure to enter the same email address you signed up with to locate your
+          existing account:
+        </mj-text>
+        <mj-button
+          href="{{ finish_link }}"
+          background-color="#000000"
+          color="#FFFFFF"
+          font-size="14px"
+          border-radius="6px"
+          padding="10px 0"
+        >
+          Complete Your Subscription
+        </mj-button>
+        <mj-text>
+          If you have any questions or need any help, please email
+          <a href="mailto:sales@bviral.com">sales@bviral.com</a>. We're excited to
+          partner with you!
+        </mj-text>
+        <mj-text>
+          Best,<br />
+          The BVIRAL Team
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    {{ footer_content|safe }}
+  </mj-body>
+</mjml>

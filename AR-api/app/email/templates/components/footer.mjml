@@ -1,0 +1,9 @@
+<mj-section padding-top="20px">
+  <mj-column>
+    <mj-text font-size="10px" color="#888888" align="center">
+      All Rights Reserved<br/>
+      SocialCoaster Inc. dba BVIRAL<br/>
+      300 Centerview Drive, Suite 110, Brentwood TN 37027
+    </mj-text>
+  </mj-column>
+</mj-section>

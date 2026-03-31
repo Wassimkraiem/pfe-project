@@ -1,0 +1,1 @@
+FLASK_APP=sev.app:bviral_app

@@ -1,0 +1,60 @@
+# Authentic Rights API - Staging
+# Copy to staging.tfvars and fill; staging.tfvars is gitignored.
+# Local: terraform apply -var-file=staging.tfvars (with TF_VAR_ENV=staging or workspace)
+
+ENV         = "staging"
+owner       = "platform-team"
+cost_center = "engineering"
+
+ecr_repository_name = "authentic_rights_api"
+image_tag           = "staging"
+deploy_app_services = true
+
+db_name     = "authentic_rights"
+db_username = "postgres"
+db_password = "<set-in-staging.tfvars>"
+
+rds_instance_class = "db.t4g.micro"
+redis_node_type    = "cache.t4g.micro"
+
+PROJECT_NAME                           = "Authentic Rights API"
+FRONTEND_URL                           = "http://localhost:3000"
+# Comma-separated exact origins (e.g. https://your-app.netlify.app); "*" fails with credentials
+CORS_ORIGINS                           = "https://authentic-rights-portal.netlify.app"
+SMTP_HOST                              = "email-smtp.us-east-1.amazonaws.com"
+SMTP_PORT                              = "587"
+SMTP_REGION                            = "us-east-1"
+SMTP_USE_TLS                           = "true"
+EMAIL_SENDER                           = "noreply@bviral.com"
+EMAIL_SENDER_NAME                      = "BVIRAL Sales Team"
+SMS_BASE_URL                           = "https://apis.bv.media/sms"
+STRIPE_API_VERSION                     = ""
+CLERK_SESSION_TOKEN_EXPIRES_IN_SECONDS = "604800"
+STARTUP_ENABLE_DDB_CHECK               = "false"
+DDB_TABLE_NAME                         = ""
+DDB_REGION                             = "us-east-1"
+
+# Secrets (set in Bitbucket for CI; fill locally in staging.tfvars)
+SMTP_USERNAME                  = "<set-in-bitbucket-or-staging.tfvars>"
+SMTP_PASSWORD                  = "<set-in-bitbucket-or-staging.tfvars>"
+CLERK_SECRET_KEY               = "<set-in-bitbucket-or-staging.tfvars>"
+CLERK_JWKS_URL                 = "https://your-app.clerk.accounts.dev/.well-known/jwks.json"
+STRIPE_WEBHOOK_SECRET          = "<set-in-bitbucket-or-staging.tfvars>"
+STRIPE_SECRET_KEY              = "<set-in-bitbucket-or-staging.tfvars>"
+STRIPE_PRICE_ID_MONTHLY        = "<set-in-bitbucket-or-staging.tfvars>"
+STRIPE_PRICE_ID_YEARLY         = "<set-in-bitbucket-or-staging.tfvars>"
+SMS_X_API_KEY                  = "<set-in-bitbucket-or-staging.tfvars>"
+SMS_API_KEY                    = "<set-in-bitbucket-or-staging.tfvars>"
+
+worker_runtime = "ecs_fargate"
+alarm_email    = ""
+
+# Sentry (prod only; leave empty for staging/local)
+SENTRY_DSN                    = ""
+SENTRY_TRACES_SAMPLE_RATE     = "1.0"
+SENTRY_PROFILES_SAMPLE_RATE   = "1.0"
+
+# Slack Notifications (leave empty to disable)
+SLACK_WEBHOOK_URL             = ""
+
+# Optional (leave unset for null): DATABASE_URL, CELERY_BROKER_URL, CELERY_RESULT_BACKEND, CANTO_*

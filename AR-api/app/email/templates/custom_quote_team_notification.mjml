@@ -1,0 +1,45 @@
+<mjml>
+  <mj-head>
+    {{ head_content|safe }}
+  </mj-head>
+  <mj-body background-color="#FFFFFF">
+    {{ header_content|safe }}
+
+    <mj-section padding="0 20px">
+      <mj-column>
+        <mj-text>
+          New custom quote submitted.
+        </mj-text>
+        <mj-text>
+          <strong>Submitter email:</strong> {{ submitter_email }}
+        </mj-text>
+        <mj-text>
+          <strong>Channels:</strong>
+          {% if channels %}
+          <ul>
+            {% for channel in channels %}
+            <li>{{ channel }}</li>
+            {% endfor %}
+          </ul>
+          {% else %}
+          <div>No channels found.</div>
+          {% endif %}
+        </mj-text>
+        <mj-text>
+          <strong>Flags:</strong>
+          {% if triggers %}
+          <ul>
+            {% for trigger in triggers %}
+            <li>{{ trigger.get("channel_url") }} — {{ trigger.get("flag") }}</li>
+            {% endfor %}
+          </ul>
+          {% else %}
+          <div>No flags found.</div>
+          {% endif %}
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    {{ footer_content|safe }}
+  </mj-body>
+</mjml>

@@ -1,0 +1,47 @@
+<mjml>
+  <mj-head>
+    {{ head_content|safe }}
+  </mj-head>
+  <mj-body background-color="#FFFFFF">
+    {{ header_content|safe }}
+
+    <mj-section padding="0 20px">
+      <mj-column>
+        <mj-text>
+          Hi {{ first_name }},
+        </mj-text>
+        <mj-text>
+          It looks like you're trying to start the checkout process for a BVIRAL
+          subscription, but our records show that this email address is already
+          associated with an active subscription.
+        </mj-text>
+        <mj-text>
+          It appears your account setup wasn't fully finished. Please follow the link
+          below to set your password and access your dashboard so you can start
+          posting right away:
+        </mj-text>
+        <mj-button
+          href="{{ complete_account_link }}"
+          background-color="#000000"
+          color="#FFFFFF"
+          font-size="14px"
+          border-radius="6px"
+          padding="10px 0"
+        >
+          Finish Account Setup
+        </mj-button>
+        <mj-text>
+          If you believe this is an error, please contact
+          <a href="mailto:sales@bviral.com">sales@bviral.com</a> and we'll be happy
+          to help.
+        </mj-text>
+        <mj-text>
+          Best,<br />
+          The BVIRAL Team
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    {{ footer_content|safe }}
+  </mj-body>
+</mjml>

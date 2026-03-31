@@ -1,0 +1,52 @@
+<mjml>
+  <mj-head>
+    {{ head_content|safe }}
+  </mj-head>
+  <mj-body background-color="#FFFFFF">
+    <!-- Header Section -->
+    {{ header_content|safe }}
+
+    <!-- Main Content Section -->
+    <mj-section padding="0 20px">
+      <mj-column>
+        <mj-text>
+          Hi {{ first_name }},
+        </mj-text>
+        <mj-text>
+          We’ve received your payment, but it looks like your account setup isn’t
+          quite finished yet.
+        </mj-text>
+        <mj-text>
+          Please follow the link below to set your password and complete your
+          profile in order to start using your subscription:
+        </mj-text>
+        <mj-button
+          href="{{ complete_account_link }}"
+          background-color="#000000"
+          color="#FFFFFF"
+          font-size="14px"
+          border-radius="6px"
+          padding="10px 0"
+        >
+          Complete Account Setup
+        </mj-button>
+        <mj-text>
+          Once you're finished, you will be able to access the Canto library
+          directly through your dashboard.
+        </mj-text>
+        <mj-text>
+          If you have any questions or need any help getting logged in, please email
+          <a href="mailto:sales@bviral.com">sales@bviral.com</a>.
+        </mj-text>
+        <mj-text>
+          Best,<br />
+          The BVIRAL Team
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <!-- Footer Section -->
+    {{ footer_content|safe }}
+
+  </mj-body>
+</mjml>

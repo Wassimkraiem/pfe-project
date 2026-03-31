@@ -1,0 +1,48 @@
+<mjml>
+  <mj-head>
+    {{ head_content|safe }}
+  </mj-head>
+  <mj-body background-color="#FFFFFF">
+    <!-- Header Section -->
+    {{ header_content|safe }}
+
+    <!-- Main Content Section -->
+    <mj-section padding="0 20px">
+      <mj-column>
+        <mj-text>
+          Hi {{ first_name }},
+        </mj-text>
+        <mj-text>
+          You've already done the hard part by adding your channels - now you're just
+          one step away from completing your subscription.
+        </mj-text>
+        <mj-text>
+          Finalize your checkout today to gain full access to our library of 90,000+
+          videos with unlimited downloads so you can start posting right away.
+        </mj-text>
+        <mj-button
+          href="{{ resume_link }}"
+          background-color="#000000"
+          color="#FFFFFF"
+          font-size="14px"
+          border-radius="6px"
+          padding="10px 0"
+        >
+          Complete Checkout
+        </mj-button>
+        <mj-text>
+          If you have any questions or need anything while finishing up, please email
+          <a href="mailto:sales@bviral.com">sales@bviral.com</a>. We're here to help!
+        </mj-text>
+        <mj-text>
+          Best,<br />
+          The BVIRAL Team
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <!-- Footer Section -->
+    {{ footer_content|safe }}
+
+  </mj-body>
+</mjml>

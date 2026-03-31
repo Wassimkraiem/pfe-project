@@ -1,0 +1,122 @@
+# CI/CD pipeline with Terraform SSM + ECS deployment
+image: python:3.10-slim
+
+definitions:
+  steps:
+    - step: &prepare_env
+        name: Prepare .tfvars file
+        script:
+          - apt-get update
+          - apt-get -y install gettext
+          - |
+            if [ "$BITBUCKET_BRANCH" = "main" ]; then
+              ENV=prod
+            elif [ "$BITBUCKET_BRANCH" = "staging" ]; then
+              ENV=staging
+            else
+              echo "Unsupported branch: $BITBUCKET_BRANCH"
+              exit 1
+            fi
+            echo "ENV=${ENV}" > env.txt
+            echo "AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION:-us-east-1}" >> env.txt
+            echo "DEPLOY_APP_SERVICES=${DEPLOY_APP_SERVICES:-true}" >> env.txt
+          - set -a && . env.txt && set +a
+          - cd ssm_store
+          - envsubst < .tfvars.tmpl > .tfvars
+        artifacts:
+          paths:
+            - ssm_store/.tfvars
+            - env.txt
+
+    - step: &terraform_apply
+        name: Initialize and Apply Terraform
+        image: hashicorp/terraform:latest
+        script:
+          - set -e
+          - set -a && . env.txt && set +a
+          - export AWS_ACCESS_KEY_ID="${AWS_KEY_SSM:-$AWS_ACCESS_KEY_ID}"
+          - export AWS_SECRET_ACCESS_KEY="${AWS_SECRET_SSM:-$AWS_SECRET_ACCESS_KEY}"
+          - export AWS_REGION="${AWS_DEFAULT_REGION:-us-east-1}"
+          - export TF_VAR_ENV="${ENV}"
+          - cd ssm_store
+          - terraform init
+          - terraform workspace select "${ENV}" || terraform workspace new "${ENV}"
+          - terraform workspace list
+          - terraform fmt -check
+          - terraform validate
+          - terraform plan -var-file=.tfvars -out=tfplan
+          - terraform apply -auto-approve tfplan
+          - WORKER_TASK_DEF=$(terraform output -raw worker_task_definition_revision)
+          - WEB_TASK_DEF=$(terraform output -raw web_task_definition_revision)
+          - echo "WORKER_TASK_DEF=${WORKER_TASK_DEF}" >> ../env.txt
+          - echo "WEB_TASK_DEF=${WEB_TASK_DEF}" >> ../env.txt
+        artifacts:
+          paths:
+            - env.txt
+
+    - step: &build_app
+        name: Build and Push Docker Image
+        image: atlassian/default-image:3
+        services:
+          - docker
+        caches:
+          - docker
+        script:
+          - set -e
+          - set -a && . env.txt && set +a
+          - export ECR_AWS_ACCESS_KEY_ID="${AWS_KEY_ECR:-$AWS_ACCESS_KEY_ID}"
+          - export ECR_AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ECR:-$AWS_SECRET_ACCESS_KEY}"
+          - export ECR_AWS_REGION="${AWS_DEFAULT_REGION:-us-east-1}"
+          - docker build -f Dockerfile -t authentic_rights_api:$BITBUCKET_BRANCH -t authentic_rights_api:build-$BITBUCKET_BUILD_NUMBER .
+          - pipe: atlassian/aws-ecr-push-image:2.2.0
+            variables:
+              AWS_ACCESS_KEY_ID: $ECR_AWS_ACCESS_KEY_ID
+              AWS_SECRET_ACCESS_KEY: $ECR_AWS_SECRET_ACCESS_KEY
+              AWS_DEFAULT_REGION: $ECR_AWS_REGION
+              IMAGE_NAME: authentic_rights_api
+              TAGS: "${BITBUCKET_BRANCH} build-${BITBUCKET_BUILD_NUMBER}"
+        artifacts:
+          paths:
+            - env.txt
+
+    - step: &deploy_ecs
+        name: Deploy ECS Services
+        image: python:3.10-slim
+        script:
+          - set -e
+          - set -a && . env.txt && set +a
+          - pip3 install awscli==1.32.70
+          - export AWS_ACCESS_KEY_ID="${AWS_KEY_SSM:-$AWS_ACCESS_KEY_ID}"
+          - export AWS_SECRET_ACCESS_KEY="${AWS_SECRET_SSM:-$AWS_SECRET_ACCESS_KEY}"
+          - export AWS_DEFAULT_REGION="${AWS_DEFAULT_REGION:-us-east-1}"
+          - export ECS_CLUSTER_NAME="${ECS_CLUSTER_NAME:-authentic-rights-api-${ENV}-cluster}"
+          - |
+            REGION="${AWS_DEFAULT_REGION:-us-east-1}"
+            CLUSTER="${ECS_CLUSTER_NAME}"
+            # Web
+            WEB_TASK="authentic-rights-api-${ENV}-web:${WEB_TASK_DEF}"
+            aws ecs describe-task-definition --task-definition "$WEB_TASK" --region "$REGION" --query 'taskDefinition.taskDefinitionArn' --output text || { echo "Task definition $WEB_TASK not found"; exit 1; }
+            aws ecs update-service --cluster "$CLUSTER" --service "authentic-rights-api-${ENV}-web" --force-new-deployment --region "$REGION" --task-definition "$WEB_TASK"
+            aws ecs wait services-stable --cluster "$CLUSTER" --services "authentic-rights-api-${ENV}-web" --region "$REGION"
+            # Worker (roll after web is stable to avoid schema race)
+            WORKER_TASK="authentic-rights-api-${ENV}-worker:${WORKER_TASK_DEF}"
+            aws ecs describe-task-definition --task-definition "$WORKER_TASK" --region "$REGION" --query 'taskDefinition.taskDefinitionArn' --output text || { echo "Task definition $WORKER_TASK not found"; exit 1; }
+            aws ecs update-service --cluster "$CLUSTER" --service "authentic-rights-api-${ENV}-worker" --force-new-deployment --region "$REGION" --task-definition "$WORKER_TASK"
+            aws ecs wait services-stable --cluster "$CLUSTER" --services "authentic-rights-api-${ENV}-worker" --region "$REGION"
+
+pipelines:
+  branches:
+    main:
+      - step:
+          <<: *prepare_env
+          deployment: production
+      - step: *terraform_apply
+      - step: *build_app
+      - step: *deploy_ecs
+    staging:
+      - step:
+          <<: *prepare_env
+          deployment: staging
+      - step: *terraform_apply
+      - step: *build_app
+      - step: *deploy_ecs
