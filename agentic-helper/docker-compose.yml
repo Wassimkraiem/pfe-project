@@ -1,0 +1,39 @@
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: agentic-helper-db
+    environment:
+      POSTGRES_DB: agentic_helper
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d agentic_helper"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: agentic-helper-api
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/agentic_helper
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8003 --reload --reload-dir /app/app
+    volumes:
+      - ./:/app
+    ports:
+      - "8003:8003"
+    restart: unless-stopped
+
+volumes:
+  pgdata:

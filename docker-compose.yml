@@ -1,0 +1,283 @@
+services:
+  ar-db:
+    image: postgres:15-alpine
+    container_name: ar-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: authentic_rights
+    volumes:
+      - ar_postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d authentic_rights"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  ar-redis:
+    image: redis:7-alpine
+    container_name: ar-redis
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  ar-api:
+    build:
+      context: ./AR-api
+      dockerfile: Dockerfile
+    container_name: ar-api
+    working_dir: /app
+    env_file:
+      - ./AR-api/.env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@ar-db:5432/authentic_rights
+      CELERY_BROKER_URL: redis://ar-redis:6379/0
+      CELERY_RESULT_BACKEND: redis://ar-redis:6379/1
+      FRONTEND_URL: http://localhost:3001
+      CORS_ORIGINS: http://localhost:3000,http://localhost:3001,http://127.0.0.1:3000,http://127.0.0.1:3001,*
+    command: uvicorn app.app:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - ./AR-api:/app
+    depends_on:
+      ar-db:
+        condition: service_healthy
+      ar-redis:
+        condition: service_healthy
+    ports:
+      - "8001:8000"
+
+  ar-celery-worker:
+    build:
+      context: ./AR-api
+      dockerfile: Dockerfile
+    container_name: ar-celery-worker
+    working_dir: /app
+    env_file:
+      - ./AR-api/.env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@ar-db:5432/authentic_rights
+      CELERY_BROKER_URL: redis://ar-redis:6379/0
+      CELERY_RESULT_BACKEND: redis://ar-redis:6379/1
+    command: celery -A app.celery_app:celery_app worker --loglevel=info
+    volumes:
+      - ./AR-api:/app
+    depends_on:
+      ar-db:
+        condition: service_healthy
+      ar-redis:
+        condition: service_healthy
+
+  ar-celery-beat:
+    build:
+      context: ./AR-api
+      dockerfile: Dockerfile
+    container_name: ar-celery-beat
+    working_dir: /app
+    env_file:
+      - ./AR-api/.env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@ar-db:5432/authentic_rights
+      CELERY_BROKER_URL: redis://ar-redis:6379/0
+      CELERY_RESULT_BACKEND: redis://ar-redis:6379/1
+    command: celery -A app.celery_app:celery_app beat --loglevel=info
+    volumes:
+      - ./AR-api:/app
+    depends_on:
+      ar-db:
+        condition: service_healthy
+      ar-redis:
+        condition: service_healthy
+
+  opensearch-node1:
+    image: opensearchproject/opensearch:3
+    container_name: opensearch-node1
+    environment:
+      cluster.name: opensearch-cluster
+      node.name: opensearch-node1
+      discovery.seed_hosts: opensearch-node1,opensearch-node2
+      cluster.initial_cluster_manager_nodes: opensearch-node1,opensearch-node2
+      bootstrap.memory_lock: "true"
+      OPENSEARCH_JAVA_OPTS: -Xms512m -Xmx512m
+      DISABLE_INSTALL_DEMO_CONFIG: "true"
+      DISABLE_SECURITY_PLUGIN: "true"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    volumes:
+      - opensearch_data1:/usr/share/opensearch/data
+    ports:
+      - "9200:9200"
+      - "9600:9600"
+
+  opensearch-node2:
+    image: opensearchproject/opensearch:3
+    container_name: opensearch-node2
+    environment:
+      cluster.name: opensearch-cluster
+      node.name: opensearch-node2
+      discovery.seed_hosts: opensearch-node1,opensearch-node2
+      cluster.initial_cluster_manager_nodes: opensearch-node1,opensearch-node2
+      bootstrap.memory_lock: "true"
+      OPENSEARCH_JAVA_OPTS: -Xms512m -Xmx512m
+      DISABLE_INSTALL_DEMO_CONFIG: "true"
+      DISABLE_SECURITY_PLUGIN: "true"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    volumes:
+      - opensearch_data2:/usr/share/opensearch/data
+
+  opensearch-dashboards:
+    image: opensearchproject/opensearch-dashboards:3
+    container_name: opensearch-dashboards
+    ports:
+      - "5601:5601"
+    environment:
+      OPENSEARCH_HOSTS: '["http://opensearch-node1:9200","http://opensearch-node2:9200"]'
+      DISABLE_SECURITY_DASHBOARDS_PLUGIN: "true"
+    depends_on:
+      - opensearch-node1
+      - opensearch-node2
+
+  videos-search-api:
+    build:
+      context: ./videos-search-api
+      dockerfile: Dockerfile
+    container_name: videos-search-api
+    working_dir: /sev
+    environment:
+      FLASK_RUN_RELOAD: "1"
+      PYTHONUNBUFFERED: "1"
+      FLASK_APP: sev.app:bviral_app
+      FLASK_DEBUG: "1"
+      FLASK_ENV: development
+      OPENSEARCH_HOST: opensearch-node1
+      OPENSEARCH_PORT: "9200"
+      OPENSEARCH_AUTH_ADMIN: admin
+      OPENSEARCH_INITIAL_ADMIN_PASSWORD: admin
+      SENTRY_DSN: ""
+      API_KEYS: key1
+    command: flask run --debug --host=0.0.0.0 --port 5000
+    volumes:
+      - ./videos-search-api:/sev
+    depends_on:
+      - opensearch-node1
+      - opensearch-node2
+    ports:
+      - "5000:5000"
+
+  agentic-helper-db:
+    image: pgvector/pgvector:pg16
+    container_name: agentic-helper-db
+    environment:
+      POSTGRES_DB: agentic_helper
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - agentic_helper_pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d agentic_helper"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  agentic-helper-api:
+    build:
+      context: ./agentic-helper
+      dockerfile: Dockerfile
+    container_name: agentic-helper-api
+    working_dir: /app
+    env_file:
+      - ./agentic-helper/.env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@agentic-helper-db:5432/agentic_helper
+      VIDEOS_SEARCH_API_URL: http://videos-search-api:5000
+      VIDEOS_SEARCH_API_FALLBACK_URLS: http://videos-search-api:5000,http://host.docker.internal:5000
+      FRONTEND_SEARCH_URL: http://localhost:3002/search
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8003 --reload --reload-dir /app/app
+    volumes:
+      - ./agentic-helper:/app
+    depends_on:
+      agentic-helper-db:
+        condition: service_healthy
+      videos-search-api:
+        condition: service_started
+    ports:
+      - "8003:8003"
+
+  authentic-rights-portal:
+    build:
+      context: ./authentic_rights_portal
+      dockerfile: Dockerfile.dev
+    container_name: authentic-rights-portal
+    working_dir: /app
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8001
+      NEXT_PUBLIC_VIDEOS_API_URL: http://localhost:5000
+      NEXT_PUBLIC_VIDEOS_API_KEY: key1
+      CHAT_API_URL: http://agentic-helper-api:8003/api/v1/chat
+      CHAT_API_KEY: change-me
+      NEXT_PUBLIC_CONTENT_PORTAL_URL: http://localhost:3002/dashboard
+    command: npm run dev -- --hostname 0.0.0.0 --port 3001
+    volumes:
+      - ./authentic_rights_portal:/app
+      - auth_portal_node_modules:/app/node_modules
+      - auth_portal_next:/app/.next
+    depends_on:
+      - ar-api
+      - videos-search-api
+      - agentic-helper-api
+    ports:
+      - "3001:3001"
+
+  videosearch-portal:
+    build:
+      context: ./videosearchv0
+      dockerfile: Dockerfile.dev
+    container_name: videosearch-portal
+    working_dir: /app
+    environment:
+      NEXT_PUBLIC_AR_API_URL: http://localhost:8001
+      NEXT_PUBLIC_SIGNUP_PORTAL_URL: http://localhost:3001
+      NEXT_PUBLIC_VIDEOS_API_URL: http://localhost:5000
+      NEXT_PUBLIC_VIDEOS_API_KEY: key1
+      VIDEOS_API_URL: http://videos-search-api:5000
+      VIDEOS_API_KEY: key1
+      CHAT_API_URL: http://agentic-helper-api:8003/api/v1/chat
+      CHAT_API_KEY: change-me
+      NEXT_PUBLIC_CHAT_API_URL: http://localhost:8003/api/v1/chat
+      NEXT_PUBLIC_CHAT_API_KEY: change-me
+    command: npm run dev -- --hostname 0.0.0.0 --port 3000
+    volumes:
+      - ./videosearchv0:/app
+      - videosearch_node_modules:/app/node_modules
+      - videosearch_next:/app/.next
+    depends_on:
+      - ar-api
+      - agentic-helper-api
+    ports:
+      - "3002:3000"
+
+volumes:
+  ar_postgres_data:
+  opensearch_data1:
+  opensearch_data2:
+  agentic_helper_pgdata:
+  auth_portal_node_modules:
+  auth_portal_next:
+  videosearch_node_modules:
+  videosearch_next:

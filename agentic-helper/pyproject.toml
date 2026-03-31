@@ -1,0 +1,35 @@
+[project]
+name = "agentic-helper"
+version = "0.1.0"
+description = "FastAPI chatbot with LangChain and RAG"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi>=0.116.0",
+  "uvicorn[standard]>=0.35.0",
+  "sqlalchemy>=2.0.38",
+  "asyncpg>=0.30.0",
+  "pgvector>=0.3.6",
+  "pydantic-settings>=2.10.1",
+  "langchain>=0.3.27",
+  "langchain-openai>=0.3.30",
+  "langchain-text-splitters>=0.3.9",
+  "openpyxl>=3.1.5",
+  "python-multipart>=0.0.20",
+  "httpx>=0.28.1",
+  "langgraph>=0.4.1"
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.4.2",
+  "pytest-asyncio>=1.1.0",
+  "httpx>=0.28.1"
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
