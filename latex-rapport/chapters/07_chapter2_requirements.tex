@@ -8,6 +8,9 @@ the functional and non-functional requirements, organizes them into a product ba
 the work tools adopted by the team, and defines the general architecture together with static and
 dynamic design views that guide the implementation sprints.
 
+%% Clickable back-reference to a webography item: \webref{web:fastapi}
+\newcommand{\webref}[1]{\hyperref[#1]{[ref.~\ref*{#1}]}}
+
 \newcommand{\toollogo}[3][2.0cm]{%
   \begin{figure}[H]
   \centering
@@ -349,35 +352,35 @@ US-21 & Favorites       & As a subscriber, I want to save videos to a favorites 
 \textbf{FastAPI}
 
 FastAPI is used to build the AR-API and Agentic Helper backend services with asynchronous endpoints,
-automatic OpenAPI documentation, and clear request/response schema validation.
+automatic OpenAPI documentation, and clear request/response schema validation~\webref{web:fastapi}.
 
 \toollogo{figures/logos/fastapilogo.png}{FastAPI}
 
 \textbf{Flask + Flask-RESTX}
 
 Flask with Flask-RESTX is used in the Videos Search API to expose REST endpoints and organize service
-resources around OpenSearch video indexing and query operations.
+resources around OpenSearch video indexing and query operations~\webref{web:flask}.
 
 \toollogo{figures/logos/flasklogo.png}{Flask}
 
 \textbf{SQLAlchemy 2.0 async + asyncpg}
 
 SQLAlchemy asynchronous ORM with asyncpg provides non-blocking PostgreSQL data access in FastAPI
-services, enabling efficient database interactions under concurrent API workloads.
+services, enabling efficient database interactions under concurrent API workloads~\webref{web:sqlalchemy}.
 
 \toollogo{figures/logos/SQLAlchemy-logo.png}{SQLAlchemy}
 
 \textbf{Alembic}
 
 Alembic is used for database schema migration management, allowing controlled evolution of PostgreSQL
-tables, constraints, and relationships across project iterations.
+tables, constraints, and relationships across project iterations~\webref{web:alembic}.
 
 \toollogo{figures/logos/alembic logo.png}{Alembic}
 
 \textbf{Celery + Redis}
 
 Celery with Redis is used to process asynchronous and scheduled background tasks, such as delayed
-operations and periodic jobs that should not block API request handling.
+operations and periodic jobs that should not block API request handling~\webref{web:celery}\webref{web:redis}.
 
 \toollogodouble
   {figures/logos/celery logo.png}{Celery}
@@ -386,35 +389,35 @@ operations and periodic jobs that should not block API request handling.
 \textbf{LangChain}
 
 LangChain is used to implement the chatbot orchestration logic, including prompt pipelines, tool
-calling behavior, and multi-step reasoning flows for video search interactions.
+calling behavior, and multi-step reasoning flows for video search interactions~\webref{web:langchain}.
 
 \toollogo{figures/logos/LangChain_Logo.png}{LangChain}
 
 \textbf{Qdrant}
 
 Qdrant is the vector database used to store embeddings and perform semantic similarity retrieval,
-supporting context grounding for the AI assistant knowledge workflow.
+supporting context grounding for the AI assistant knowledge workflow~\webref{web:qdrant}.
 
 \toollogo{figures/logos/qdrant-logo.png}{Qdrant}
 
 \textbf{OpenSearch Python}
 
 The OpenSearch Python client is used by the Videos Search API to query and manage indexed video
-documents with lexical search and vector-aware retrieval capabilities.
+documents with lexical search and vector-aware retrieval capabilities~\webref{web:opensearch}.
 
 \toollogo{figures/logos/opensearch logo.png}{OpenSearch}
 
 \textbf{Next.js 15 / 16}
 
 Next.js powers both web portals and provides server-side rendering, App Router features, and API
-routes used as backend-for-frontend layers for integration with internal services.
+routes used as backend-for-frontend layers for integration with internal services~\webref{web:nextjs}.
 
 \toollogo{figures/logos/Nextjs-logo.png}{Next.js}
 
 \textbf{Radix UI / Material UI / Tailwind CSS}
 
 These UI libraries are used to accelerate frontend implementation with reusable components, theming,
-and utility-first styling for consistent and responsive interfaces.
+and utility-first styling for consistent and responsive interfaces~\webref{web:radixui}\webref{web:mui}\webref{web:tailwind}.
 
 \toollogotriple
   {figures/logos/radix ui logo.png}{Radix UI}
@@ -424,14 +427,14 @@ and utility-first styling for consistent and responsive interfaces.
 \textbf{Clerk}
 
 Clerk is used for authentication and user identity management, including secure sign-in flows and
-session handling across the platform portals and protected backend endpoints.
+session handling across the platform portals and protected backend endpoints~\webref{web:clerk}.
 
 \toollogo{figures/logos/clerk logo.png}{Clerk}
 
 \textbf{Stripe JS + Python}
 
 Stripe SDKs are used for subscription billing workflows, including checkout session handling, payment
-integration, and secure webhook verification in backend services.
+integration, and secure webhook verification in backend services~\webref{web:stripe}.
 
 \toollogo{figures/logos/stripe logo.png}{Stripe}
 
@@ -449,21 +452,21 @@ integration, and secure webhook verification in backend services.
 \textbf{Cursor IDE}
 
 Cursor IDE is the main development environment used in this project. It provides an AI-assisted
-workflow for writing, refactoring, and reviewing code across the platform services.
+workflow for writing, refactoring, and reviewing code across the platform services~\webref{web:cursor}.
 
 \toollogo{figures/logos/cursor ide logo.final.png}{Cursor IDE}
 
 \textbf{Docker}
 
 Docker is used to package services in isolated containers so each component runs with consistent
-runtime dependencies across development environments.
+runtime dependencies across development environments~\webref{web:docker}.
 
 \toollogo{figures/logos/Docker_Logo.png}{Docker}
 
 \textbf{Docker Compose}
 
 Docker Compose orchestrates multi-service local environments by defining and starting all required
-containers (APIs, databases, cache, and supporting services) from a single configuration.
+containers (APIs, databases, cache, and supporting services) from a single configuration~\webref{web:dockercompose}.
 
 \toollogo{figures/logos/docker_compose_logo.jpeg}{Docker Compose}
 
@@ -477,21 +480,21 @@ collaboration during iterative development.
 \textbf{Postman}
 
 Postman is used to test and validate REST API endpoints by building requests, inspecting responses,
-and organizing reusable API collections.
+and organizing reusable API collections~\webref{web:postman}.
 
 \toollogo{figures/logos/Postman_logo.png}{Postman}
 
 \textbf{Qdrant Cloud Console}
 
 Qdrant Cloud Console is used to inspect vector collections, monitor indexed embeddings, and verify
-semantic retrieval data used by the chatbot pipeline.
+semantic retrieval data used by the chatbot pipeline~\webref{web:qdrant_cloud_console}.
 
 \toollogo{figures/logos/qdrant cloud console logo.png}{Qdrant Cloud Console}
 
 \textbf{OpenSearch Dashboards}
 
 OpenSearch Dashboards provides a web interface to explore indexed video data, validate mappings, and
-analyze search behavior in the OpenSearch engine.
+analyze search behavior in the OpenSearch engine~\webref{web:opensearch_dashboards}.
 
 \toollogo{figures/logos/opensearch logo.png}{OpenSearch Dashboards}
 

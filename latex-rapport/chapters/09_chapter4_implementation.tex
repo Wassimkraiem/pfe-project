@@ -1,11 +1,15 @@
-\chapter{Sprint 2 — Video Indexing and Keyword Search}
+\chapter{Sprint 2 — Video Indexing and Full-Stack Search}
 
 \section*{Introduction}
 \addcontentsline{toc}{section}{Introduction}
 
-Sprint 2 builds the core of the Videos Search API: ingestion of video documents into OpenSearch
-with normalized metadata, keyword (BM25) search over weighted fields, and aggregation-based
-facets that power the portal's filter sidebar.
+Sprint 2 builds the complete video search stack of the BVIRAL Platform. The first half delivers
+the core of the Videos Search API: ingestion of video documents into OpenSearch with normalized
+metadata, keyword (BM25) search over weighted fields, and aggregation-based facets that power the
+portal's filter sidebar. The second half extends this lexical baseline with a \textbf{semantic
+retrieval} layer, runs lexical and vector searches \textbf{in parallel}, and fuses their rankings
+with Reciprocal Rank Fusion (RRF). An optional reranker and a \textbf{position-aware blend}
+produce the final ranking before pagination.
 
 %% ─── Sprint Backlog ─────────────────────────────────────────────────────────
 \section{Sprint Backlog}
@@ -18,6 +22,8 @@ facets that power the portal's filter sidebar.
 \toprule
 \textbf{ID} & \textbf{Story} & \textbf{Task} & \textbf{Effort (d)} & \textbf{Prio.} \\
 \midrule
+\multicolumn{5}{l}{\textit{Part A — Video Indexing and Keyword Search}} \\
+\midrule
 T2.1 & US-08 & Flask + Flask-RESTX scaffolding with OpenSearch client injection & 1 & M \\
 T2.2 & US-08 & Video document schema (title, description, tags, metadata, orientation) & 1 & M \\
 T2.3 & US-08 & Index mapping + read/write aliases (\texttt{videos\_read}, \texttt{videos\_write}) configuration & 1 & M \\
@@ -27,6 +33,19 @@ T2.6 & US-08 & Filter clauses (categories, tags, duration, orientation, resoluti
 T2.7 & US-08 & Facet aggregation endpoint for the filter sidebar                     & 0.5 & M \\
 T2.8 & US-08 & Latest-videos and categories listing endpoints                        & 0.5 & S \\
 T2.9 & US-15 & Dockerization of the service                                          & 0.5 & M \\
+\midrule
+\multicolumn{5}{l}{\textit{Part B — Semantic Search and Hybrid Ranking}} \\
+\midrule
+T3.1 & US-09 & Select embedding model (OpenAI \texttt{text-embedding-3-small})     & 0.5 & M \\
+T3.2 & US-09 & Add \texttt{embedding} field (kNN mapping) to the video index       & 1 & M \\
+T3.3 & US-09 & Ingestion-side embedding computation and backfill                   & 1 & M \\
+T3.4 & US-09 & Semantic search endpoint using OpenSearch \texttt{knn} query        & 1 & M \\
+T3.5 & US-10 & Parallel lexical + vector retrieval via \texttt{ThreadPoolExecutor} & 1 & M \\
+T3.6 & US-10 & Reciprocal Rank Fusion (RRF) merge with top-rank bonus              & 1 & M \\
+T3.7 & US-10 & Low-confidence detector for optional reranking                      & 0.5 & S \\
+T3.8 & US-10 & Heuristic-first reranking + OpenAI last-resort reranker            & 1 & S \\
+T3.9 & US-10 & Position-aware blend (retrieval \& rerank weights by rank)           & 0.5 & S \\
+T3.10 & US-10 & Tunable strategy parameters and \texttt{rerank\_top\_n} cutoff      & 0.5 & C \\
 \bottomrule
 \end{tabularx}
 \end{table}
@@ -40,9 +59,9 @@ The video-search portal's anonymous visitor drives this sprint: browse, search, 
 video detail. These cases belong to the Video Search Portal boundary of the global use-case
 diagram (Figure~\ref{fig:uc_global} in Chapter~2).
 
-\subsection{Class Diagram for Sprint 2}
+\subsection{Video Document Model}
 
-The OpenSearch document model used by Sprint 2 maps each video to one document with the fields
+The OpenSearch document model used by Part A maps each video to one document with the fields
 listed in Table~\ref{tab:video_doc}. These fields are denormalized for fast lexical search and
 aggregation.
 
@@ -102,6 +121,72 @@ API into OpenSearch.
 \label{fig:seq_video_indexing}
 \end{figure}
 
+\subsection{kNN Index Extension}
+
+Part B adds a vector field to the OpenSearch index. The mapping extract below shows the key
+addition to the video document schema.
+
+\begin{lstlisting}[caption={kNN field addition to the OpenSearch video mapping}]
+"embedding": {
+  "type": "knn_vector",
+  "dimension": 1536,
+  "method": {
+    "name": "hnsw",
+    "space_type": "cosinesimil",
+    "engine": "lucene"
+  }
+}
+\end{lstlisting}
+
+\subsection{Sequence Diagram: Advanced Video Search}
+
+Figure~\ref{fig:seq_video_search} shows an advanced video-search request traversing the entire
+pipeline: the BFF forwards the user query to the Videos Search API, the API fans out parallel
+lexical and vector queries, merges the ranked lists with RRF, runs a fast heuristic reranker,
+then calls the OpenAI reranker only as a last resort when local confidence is weak, applies the
+position-aware blend, and returns a paginated response.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[x=1cm, y=1cm, font=\fontsize{7}{8}\selectfont]
+%% Participants
+\node[sdFE]   (pUser)  at ( 0.0, 0) {User};
+\node[sdFE]   (pBFF)   at ( 2.8, 0) {Portal BFF};
+\node[sdBE]   (pAPI)   at ( 5.6, 0) {Videos\\Search API};
+\node[sdData] (pOS)    at ( 8.4, 0) {OpenSearch};
+\node[sdExt]  (pEmb)   at (11.2, 0) {Embedding\\API};
+\node[sdExt]  (pRerank)at (14.0, 0) {OpenAI\\reranker};
+
+\foreach \x in {0.0, 2.8, 5.6, 8.4, 11.2, 14.0}
+  \draw[dashed, gray!50] (\x,-0.3) -- (\x,-12.0);
+
+\draw[sdmsg] (0.0,-0.85) -- node[above, pos=0.5]{query + filters} (2.8,-0.85);
+\draw[sdmsg] (2.8,-1.57) -- node[above, pos=0.5]{POST /api/videos/query} (5.6,-1.57);
+\draw[sdmsg] (5.6,-2.29) -- node[above, pos=0.5]{embed(query)} (11.2,-2.29);
+\draw[sdret] (11.2,-3.01)-- node[above, pos=0.5]{query\_vector} (5.6,-3.01);
+
+%% Parallel
+\node[sdfrag] at (-0.5,-3.65) {par};
+\draw[sdmsg] (5.6,-3.73) -- node[above, pos=0.5]{lexical multi\_match} (8.4,-3.73);
+\draw[sdmsg] (5.6,-4.45) -- node[above, pos=0.5]{knn vector search} (8.4,-4.45);
+\draw[sdret] (8.4,-5.17) -- node[above, pos=0.5]{hits\_lex (ranked)} (5.6,-5.17);
+\draw[sdret] (8.4,-5.89) -- node[above, pos=0.5]{hits\_vec (ranked)} (5.6,-5.89);
+
+\draw[sdmsg] (5.6,-6.61) to[out=-30,in=30] node[right, pos=0.5]{RRF fusion + top-rank bonus} (5.6,-7.33);
+\draw[sdmsg] (5.6,-8.05) to[out=-30,in=30] node[right, pos=0.5]{heuristic rerank} (5.6,-8.77);
+
+\node[sdfrag] at (-0.5,-9.4) {opt: weak local confidence};
+\draw[sdmsg] (5.6,-9.49) -- node[above, pos=0.5]{OpenAI rerank (last resort)} (14.0,-9.49);
+\draw[sdret] (14.0,-10.21)-- node[above, pos=0.5]{rerank scores} (5.6,-10.21);
+
+\draw[sdmsg] (5.6,-10.93)-- node[above, pos=0.5]{position-aware blend + sort + paginate} (5.6,-10.93);
+\draw[sdret] (5.6,-11.65)-- node[above, pos=0.5]{ranked video results} (0.0,-11.65);
+
+\end{tikzpicture}
+\caption{Advanced video search sequence — parallel retrieval and ranking}
+\label{fig:seq_video_search}
+\end{figure}
+
 %% ─── Implementation ────────────────────────────────────────────────────────
 \section{Implementation}
 
@@ -153,9 +238,9 @@ stronger signals dominate.
 \end{tabular}
 \end{table}
 
-Keyword search is fast, predictable, and great for precise queries (exact titles or IDs). It fails
-when users describe intent rather than vocabulary (``a crowd celebrating a football goal''), which
-motivates the semantic retrieval built in Sprint 3.
+Keyword search is fast, predictable, and great for precise queries (exact titles or IDs). It
+fails when users describe intent rather than vocabulary (``a crowd celebrating a football goal''),
+which motivates the semantic retrieval built in Part B of this sprint.
 
 \begin{figure}[H]
 \centering
@@ -191,7 +276,7 @@ counts for \texttt{categories}, \texttt{tags}, \texttt{resolutions}, and \texttt
 The portal uses these numbers to render the filter sidebar shown in
 Figure~\ref{fig:screen_vp_search}.
 
-\subsection{Delivered Interfaces}
+\subsection{Delivered Interfaces — Part A}
 
 
 \begin{figure}[H]
@@ -208,9 +293,157 @@ Figure~\ref{fig:screen_vp_search}.
 \label{fig:screen_vp_detail}
 \end{figure}
 
+\subsection{Embedding Model and Index Mapping}
+
+Semantic retrieval uses \textbf{OpenAI \texttt{text-embedding-3-small}} (1536-dimensional
+embeddings). Each video document now carries an \texttt{embedding} field populated from
+\texttt{title + description + tags + transcript (if available)}. The field uses OpenSearch's
+\texttt{knn\_vector} type with HNSW indexing and cosine similarity space.
+
+\subsection{Vector Search}
+
+\textbf{Vector search} complements keyword search by matching \textbf{meaning} instead of words.
+Each video is represented by its embedding. A query's embedding is compared with the indexed
+vectors using cosine similarity through OpenSearch's \texttt{knn} query.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[x=1cm,y=1cm,
+  box/.style={draw=violet!60!black, fill=violet!8, rounded corners=4pt,
+              minimum width=3.4cm, minimum height=0.95cm, align=center, font=\small},
+  data/.style={draw=teal!60!black, fill=teal!8, rounded corners=4pt,
+               minimum width=3.6cm, minimum height=0.95cm, align=center, font=\small},
+  ext/.style={draw=gray!60, fill=gray!8, rounded corners=4pt,
+              minimum width=3.0cm, minimum height=0.95cm, align=center, font=\small},
+  arr/.style={->, >=Stealth, line width=0.9pt}
+]
+\node[ext]  (user)  at (-5.8, 0)   {User query};
+\node[box]  (embed) at (-1.8, 0)   {OpenAI embedding\\text-embed-3-small};
+\node[data] (qvec)  at ( 2.3, 0)   {Query vector\\$q \in \mathbb{R}^{1536}$};
+\node[data] (os)    at ( 6.3, 0)   {OpenSearch kNN\\cosine HNSW};
+\node[box]  (hits)  at ( 2.3,-2.5) {Top-k neighbours\\by similarity};
+
+\draw[arr] (user) -- (embed);
+\draw[arr] (embed) -- (qvec);
+\draw[arr] (qvec) -- (os);
+\draw[arr] (os.south) |- (hits.east);
+\draw[arr] (hits.west) -| node[below, font=\footnotesize, pos=0.25]{semantic results} (user.south);
+\end{tikzpicture}
+\caption{Vector (semantic) search pipeline}
+\label{fig:vector_search}
+\end{figure}
+
+Because the comparison is geometric, conceptually similar phrasings produce close vectors even
+when they share no tokens. This is what enables natural-language queries to reach relevant videos
+that keyword search would have missed.
+
+\subsection{Parallel Retrieval and Ranking Pipeline}
+
+For advanced video discovery, the platform combines lexical and semantic retrieval and then
+stabilizes the ranking with lightweight reranking only when needed. The orchestration is
+implemented in \texttt{advanced\_search.py}.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+  x=1cm, y=1cm,
+  node distance=0.9cm and 1.0cm,
+  box/.style={draw=blue!60!black, fill=blue!8, rounded corners=4pt,
+              minimum width=3.2cm, minimum height=0.72cm,
+              align=center, font=\fontsize{8}{9}\selectfont},
+  stage/.style={draw=teal!60!black, fill=teal!8, rounded corners=4pt,
+                minimum width=3.2cm, minimum height=0.72cm,
+                align=center, font=\fontsize{8}{9}\selectfont},
+  dec/.style={draw=orange!70!black, fill=orange!10, diamond,
+              aspect=2.2, align=center, inner sep=2pt,
+              font=\fontsize{7.5}{8.5}\selectfont},
+  arr/.style={->, >=Stealth, thick}
+]
+\node[box] (norm) {Normalize request\\(query, filters, strategy)};
+\node[stage, below=of norm] (subq) {Generate subqueries\\(original + expansion)};
+
+\node[stage, below left=1.2cm and 2.4cm of subq] (lex) {Lexical search\\OpenSearch \texttt{multi\_match}};
+\node[stage, below right=1.2cm and 2.4cm of subq] (vec) {Vector search\\OpenSearch \texttt{knn}};
+
+\node[box, below=2.1cm of subq] (rrf) {RRF fusion + top-rank bonus\\candidate pool};
+\node[stage, below=of rrf] (heur) {Heuristic rerank\\term overlap};
+\node[dec, below=of heur] (gate) {OpenAI\\last resort?};
+\node[stage, below left=1.15cm and 2.2cm of gate] (llm) {OpenAI reranker\\score in [0,1]};
+\node[box, below right=1.15cm and 2.2cm of gate] (keep) {Keep heuristic\\rerank scores};
+\node[box, below=2.4cm of gate] (blend) {Position-aware blend\\retrieval + rerank};
+\node[box, below=of blend] (sort) {Sort + paginate\\response items};
+
+\draw[arr] (norm) -- (subq);
+\draw[arr] (subq) -- (lex);
+\draw[arr] (subq) -- (vec);
+\draw[arr] (lex) -- (rrf);
+\draw[arr] (vec) -- (rrf);
+\draw[arr] (rrf) -- (heur);
+\draw[arr] (heur) -- (gate);
+\draw[arr] (gate) -- node[left, font=\scriptsize]{yes} (llm);
+\draw[arr] (gate) -- node[right, font=\scriptsize]{no} (keep);
+\draw[arr] (llm) -- (blend);
+\draw[arr] (keep) -- (blend);
+\draw[arr] (blend) -- (sort);
+\end{tikzpicture}
+\caption{Parallel retrieval and ranking pipeline in \texttt{advanced\_search.py}}
+\label{fig:advanced_search_ranking}
+\end{figure}
+
+\subsubsection{Parallel Retrieval}
+
+Lexical (\texttt{multi\_match}) and vector (\texttt{knn}) searches are dispatched together with a
+\texttt{ThreadPoolExecutor}. Two independent candidate pools are collected, each with its own
+rank positions. Running them in parallel halves the retrieval latency compared to sequential
+execution.
+
+\subsubsection{RRF Fusion}
+
+The two ranked lists are merged using \textbf{Reciprocal Rank Fusion}:
+\begin{equation}
+\mathrm{RRF}(d)=\sum_{l \in \{\mathrm{lex},\mathrm{vec}\}} \frac{1}{k+\mathrm{rank}_l(d)} + \mathrm{bonus}(\mathrm{rank}_l(d))
+\label{eq:rrf}
+\end{equation}
+with:
+\[
+\mathrm{bonus}(r)=
+\begin{cases}
+0.05 & \text{if } r=1\\
+0.02 & \text{if } r\in\{2,3\}\\
+0 & \text{otherwise}
+\end{cases}
+\]
+where $k$ is \texttt{rrf\_k} (default 60). RRF
+uses only the \textit{rank}, not the raw score, so the fusion is robust to score-scale mismatches
+between BM25 and cosine similarity.
+
+\subsubsection{Conditional Reranking}
+
+The ranking stage is \textbf{heuristic-first}: token-overlap reranking is computed locally for the
+top-$N$ candidates (\texttt{rerank\_top\_n}, default 30). A low-confidence detector then decides
+whether to escalate to an OpenAI reranker as a \textbf{last resort} (config:
+\texttt{ADVANCED\_SEARCH\_OPENAI\_RERANK\_MODE=last\_resort}). The OpenAI call uses a short timeout
+(2 seconds by default) so latency stays bounded; on timeout or API failure the heuristic scores are
+kept.
+
+\subsubsection{Position-Aware Blend}
+
+Retrieval trust is higher for the very top results; rerank trust is higher deeper in the list.
+We encode this intuition with a rank-dependent weight $w_r$:
+\begin{equation}
+\mathrm{final}(d)=w_r \cdot \mathrm{retrieval\_norm}(d) + (1-w_r)\cdot \mathrm{rerank}(d)
+\label{eq:blend}
+\end{equation}
+with $w_r=0.8$ for ranks 1--5, $w_r=0.6$ for ranks 6--15, and $w_r=0.4$ for ranks beyond 15.
+Default strategy parameters: \texttt{lex\_k=120}, \texttt{vec\_k=120}, \texttt{fuse\_k=150},
+\texttt{rerank\_top\_n=30}.
+
 \section*{Conclusion}
 \addcontentsline{toc}{section}{Conclusion}
 
-Sprint 2 produced a working video-search stack that serves keyword and facet-driven browsing.
-The next sprint adds semantic retrieval, parallel hybrid search, and a position-aware ranker on
-top of this lexical baseline.
+Sprint 2 produced the complete video-search stack: a working lexical search engine for
+keyword-driven browsing (Part A) complemented by an end-to-end semantic pipeline (Part B).
+Parallel retrieval, rank-based RRF fusion, conditional reranking, and the position-aware blend
+produce a stable, low-latency ranker that works well on both precise and intent-driven queries.
+The next sprint moves up one abstraction layer and implements the Agentic Helper's RAG and intent
+classifiers on top of this search foundation.

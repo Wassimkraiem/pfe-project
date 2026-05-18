@@ -1,55 +1,68 @@
 \relax 
 \providecommand\zref@newlabel[2]{}
 \providecommand\hyper@newdestlabel[2]{}
-\@writefile{toc}{\contentsline {chapter}{\numberline {3}Sprint 1 — Authentication, Onboarding and Payments}{23}{chapter.3}\protected@file@percent }
+\def\@LN@column{1}
+\@writefile{toc}{\contentsline {chapter}{\numberline {3}Sprint 1 — Authentication, Onboarding and Payments}{24}{chapter.3}\protected@file@percent }
 \@writefile{lof}{\addvspace {10\p@ }}
 \@writefile{lot}{\addvspace {10\p@ }}
-\@writefile{toc}{\contentsline {section}{Introduction}{23}{section*.42}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {3.1}Sprint Backlog}{24}{section.3.1}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {3.1}{\ignorespaces Sprint 1 Backlog}}{24}{table.caption.43}\protected@file@percent }
-\newlabel{tab:sprint1_backlog}{{3.1}{24}{Sprint 1 Backlog}{table.caption.43}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {3.2}Design}{24}{section.3.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.2.1}Use Case Diagram for Sprint 1}{24}{subsection.3.2.1}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {3.1}{\ignorespaces Sprint 1 use-case diagram — onboarding, authentication and payments}}{25}{figure.caption.44}\protected@file@percent }
-\newlabel{fig:uc_onboarding}{{3.1}{25}{Sprint 1 use-case diagram — onboarding, authentication and payments}{figure.caption.44}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.2.2}Class Diagram for Sprint 1}{25}{subsection.3.2.2}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {3.2}{\ignorespaces Sprint 1 class diagram — AR-API domain model (authentication, onboarding and payments)}}{25}{figure.caption.45}\protected@file@percent }
-\newlabel{fig:cd_sprint1}{{3.2}{25}{Sprint 1 class diagram — AR-API domain model (authentication, onboarding and payments)}{figure.caption.45}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.2.3}Sequence Diagrams}{26}{subsection.3.2.3}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{Onboarding Completion Sequence}{26}{subsection.3.2.3}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {3.3}{\ignorespaces Onboarding completion sequence diagram}}{26}{figure.caption.46}\protected@file@percent }
-\newlabel{fig:seq_onboarding}{{3.3}{26}{Onboarding completion sequence diagram}{figure.caption.46}{}}
-\@writefile{toc}{\contentsline {subsubsection}{Stripe Payment Handling Sequence}{26}{figure.caption.46}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {3.4}{\ignorespaces Stripe payment handling sequence diagram}}{27}{figure.caption.47}\protected@file@percent }
-\newlabel{fig:seq_payment}{{3.4}{27}{Stripe payment handling sequence diagram}{figure.caption.47}{}}
-\@writefile{toc}{\contentsline {subsubsection}{Notification Pipeline Sequence}{27}{figure.caption.47}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {3.5}{\ignorespaces Slack and email notifications via Celery tasks}}{28}{figure.caption.48}\protected@file@percent }
-\newlabel{fig:seq_notifications}{{3.5}{28}{Slack and email notifications via Celery tasks}{figure.caption.48}{}}
-\@writefile{toc}{\contentsline {subsubsection}{Onboarding Email Tracking Sequence}{28}{figure.caption.48}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {3.6}{\ignorespaces Onboarding email persistence and idempotency flow}}{29}{figure.caption.49}\protected@file@percent }
-\newlabel{fig:seq_onb_email_tracking}{{3.6}{29}{Onboarding email persistence and idempotency flow}{figure.caption.49}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {3.3}Implementation}{29}{section.3.3}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.3.1}FastAPI Layered Module Structure}{29}{subsection.3.3.1}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {3.2}{\ignorespaces AR-API domain modules}}{30}{table.caption.50}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.3.2}Clerk Authentication}{30}{subsection.3.3.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.3.3}Onboarding State Machine and Channel Submission}{30}{subsection.3.3.3}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{Portal UI Flow (Authentication + Branching Onboarding)}{30}{subsection.3.3.3}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {3.7}{\ignorespaces Common start of the AR onboarding flow}}{31}{figure.caption.51}\protected@file@percent }
-\newlabel{fig:ar_flow_common_start}{{3.7}{31}{Common start of the AR onboarding flow}{figure.caption.51}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {3.8}{\ignorespaces Custom quote branch when channel requires manual pricing}}{32}{figure.caption.52}\protected@file@percent }
-\newlabel{fig:ar_flow_custom_quote_branch}{{3.8}{32}{Custom quote branch when channel requires manual pricing}{figure.caption.52}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {3.9}{\ignorespaces Standard payment branch (no custom quote required)}}{33}{figure.caption.53}\protected@file@percent }
-\newlabel{fig:ar_flow_payment_branch}{{3.9}{33}{Standard payment branch (no custom quote required)}{figure.caption.53}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.3.4}Stripe Embedded Checkout and Webhook Security}{34}{subsection.3.3.4}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.3.5}Celery Notifications Pipeline}{34}{subsection.3.3.5}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.3.6}Delivered Interfaces}{34}{subsection.3.3.6}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {3.10}{\ignorespaces Authentic Rights Portal — login page after account creation}}{34}{figure.caption.54}\protected@file@percent }
-\newlabel{fig:screen_ar_login}{{3.10}{34}{Authentic Rights Portal — login page after account creation}{figure.caption.54}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {3.11}{\ignorespaces Authentic Rights Portal — payment details and plan confirmation}}{35}{figure.caption.55}\protected@file@percent }
-\newlabel{fig:screen_ar_payment_details}{{3.11}{35}{Authentic Rights Portal — payment details and plan confirmation}{figure.caption.55}{}}
-\@writefile{toc}{\contentsline {section}{Conclusion}{35}{figure.caption.55}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{Introduction}{24}{section*.42}\protected@file@percent }
+\def\@LN@column{1}
+\@writefile{toc}{\contentsline {section}{\numberline {3.1}Sprint Backlog}{25}{section.3.1}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {3.1}{\ignorespaces Sprint 1 Backlog}}{25}{table.caption.43}\protected@file@percent }
+\newlabel{tab:sprint1_backlog}{{3.1}{25}{Sprint 1 Backlog}{table.caption.43}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {3.2}Design}{25}{section.3.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2.1}Use Case Diagram for Sprint 1}{25}{subsection.3.2.1}\protected@file@percent }
+\def\@LN@column{1}
+\@writefile{lof}{\contentsline {figure}{\numberline {3.1}{\ignorespaces Sprint 1 use-case diagram — onboarding, authentication and payments}}{26}{figure.caption.44}\protected@file@percent }
+\newlabel{fig:uc_onboarding}{{3.1}{26}{Sprint 1 use-case diagram — onboarding, authentication and payments}{figure.caption.44}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2.2}Class Diagram for Sprint 1}{26}{subsection.3.2.2}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {3.2}{\ignorespaces Sprint 1 class diagram — AR-API domain model (authentication, onboarding and payments)}}{26}{figure.caption.45}\protected@file@percent }
+\newlabel{fig:cd_sprint1}{{3.2}{26}{Sprint 1 class diagram — AR-API domain model (authentication, onboarding and payments)}{figure.caption.45}{}}
+\def\@LN@column{1}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2.3}Sequence Diagrams}{27}{subsection.3.2.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{Onboarding Completion Sequence}{27}{subsection.3.2.3}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {3.3}{\ignorespaces Onboarding completion sequence diagram}}{27}{figure.caption.46}\protected@file@percent }
+\newlabel{fig:seq_onboarding}{{3.3}{27}{Onboarding completion sequence diagram}{figure.caption.46}{}}
+\@writefile{toc}{\contentsline {subsubsection}{Stripe Payment Handling Sequence}{27}{figure.caption.46}\protected@file@percent }
+\def\@LN@column{1}
+\@writefile{lof}{\contentsline {figure}{\numberline {3.4}{\ignorespaces Stripe payment handling sequence diagram}}{28}{figure.caption.47}\protected@file@percent }
+\newlabel{fig:seq_payment}{{3.4}{28}{Stripe payment handling sequence diagram}{figure.caption.47}{}}
+\@writefile{toc}{\contentsline {subsubsection}{Notification Pipeline Sequence}{28}{figure.caption.47}\protected@file@percent }
+\def\@LN@column{1}
+\@writefile{lof}{\contentsline {figure}{\numberline {3.5}{\ignorespaces Slack and email notifications via Celery tasks}}{29}{figure.caption.48}\protected@file@percent }
+\newlabel{fig:seq_notifications}{{3.5}{29}{Slack and email notifications via Celery tasks}{figure.caption.48}{}}
+\@writefile{toc}{\contentsline {subsubsection}{Onboarding Email Tracking Sequence}{29}{figure.caption.48}\protected@file@percent }
+\def\@LN@column{1}
+\@writefile{lof}{\contentsline {figure}{\numberline {3.6}{\ignorespaces Onboarding email persistence and idempotency flow}}{30}{figure.caption.49}\protected@file@percent }
+\newlabel{fig:seq_onb_email_tracking}{{3.6}{30}{Onboarding email persistence and idempotency flow}{figure.caption.49}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {3.3}Implementation}{30}{section.3.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.3.1}FastAPI Layered Module Structure}{30}{subsection.3.3.1}\protected@file@percent }
+\def\@LN@column{1}
+\@writefile{lot}{\contentsline {table}{\numberline {3.2}{\ignorespaces AR-API domain modules}}{31}{table.caption.50}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.3.2}Clerk Authentication}{31}{subsection.3.3.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.3.3}Onboarding State Machine and Channel Submission}{31}{subsection.3.3.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{Portal UI Flow (Authentication + Branching Onboarding)}{31}{subsection.3.3.3}\protected@file@percent }
+\def\@LN@column{1}
+\@writefile{lof}{\contentsline {figure}{\numberline {3.7}{\ignorespaces Common start of the AR onboarding flow}}{32}{figure.caption.51}\protected@file@percent }
+\newlabel{fig:ar_flow_common_start}{{3.7}{32}{Common start of the AR onboarding flow}{figure.caption.51}{}}
+\def\@LN@column{1}
+\@writefile{lof}{\contentsline {figure}{\numberline {3.8}{\ignorespaces Custom quote branch when channel requires manual pricing}}{33}{figure.caption.52}\protected@file@percent }
+\newlabel{fig:ar_flow_custom_quote_branch}{{3.8}{33}{Custom quote branch when channel requires manual pricing}{figure.caption.52}{}}
+\def\@LN@column{1}
+\@writefile{lof}{\contentsline {figure}{\numberline {3.9}{\ignorespaces Standard payment branch (no custom quote required)}}{34}{figure.caption.53}\protected@file@percent }
+\newlabel{fig:ar_flow_payment_branch}{{3.9}{34}{Standard payment branch (no custom quote required)}{figure.caption.53}{}}
+\def\@LN@column{1}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.3.4}Stripe Embedded Checkout and Webhook Security}{35}{subsection.3.3.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.3.5}Celery Notifications Pipeline}{35}{subsection.3.3.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.3.6}Delivered Interfaces}{35}{subsection.3.3.6}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {3.10}{\ignorespaces Authentic Rights Portal — login page after account creation}}{35}{figure.caption.54}\protected@file@percent }
+\newlabel{fig:screen_ar_login}{{3.10}{35}{Authentic Rights Portal — login page after account creation}{figure.caption.54}{}}
+\def\@LN@column{1}
+\@writefile{lof}{\contentsline {figure}{\numberline {3.11}{\ignorespaces Authentic Rights Portal — payment details and plan confirmation}}{36}{figure.caption.55}\protected@file@percent }
+\newlabel{fig:screen_ar_payment_details}{{3.11}{36}{Authentic Rights Portal — payment details and plan confirmation}{figure.caption.55}{}}
+\@writefile{toc}{\contentsline {section}{Conclusion}{36}{figure.caption.55}\protected@file@percent }
 \@setckpt{chapters/08_chapter3_architecture}{
-\setcounter{page}{36}
+\setcounter{page}{37}
 \setcounter{equation}{0}
 \setcounter{enumi}{6}
 \setcounter{enumii}{0}
@@ -71,12 +84,9 @@
 \setcounter{lstnumber}{1}
 \setcounter{FancyVerbLine}{0}
 \setcounter{linenumber}{1}
-\setcounter{LN@truepage}{50}
+\setcounter{LN@truepage}{52}
 \setcounter{FancyVerbWriteLine}{0}
-\setcounter{FancyVerbBufferIndex}{0}
-\setcounter{FancyVerbBufferLength}{0}
 \setcounter{FancyVerbBufferLine}{0}
-\setcounter{FV@oldbufferlength}{0}
 \setcounter{FV@TrueTabGroupLevel}{0}
 \setcounter{FV@TrueTabCounter}{0}
 \setcounter{FV@HighlightLinesStart}{0}
@@ -85,7 +95,6 @@
 \setcounter{FV@BreakBufferDepth}{0}
 \setcounter{float@type}{16}
 \setcounter{minted@FancyVerbLineTemp}{0}
-\setcounter{minted@pygmentizecounter}{0}
 \setcounter{listing}{0}
 \setcounter{parentequation}{0}
 \setcounter{section@level}{0}
@@ -102,8 +111,8 @@
 \setcounter{multicitecount}{0}
 \setcounter{multicitetotal}{0}
 \setcounter{instcount}{0}
-\setcounter{maxnames}{3}
-\setcounter{minnames}{3}
+\setcounter{maxnames}{2}
+\setcounter{minnames}{1}
 \setcounter{maxitems}{3}
 \setcounter{minitems}{1}
 \setcounter{citecounter}{0}
@@ -206,10 +215,6 @@
 \setcounter{smartand}{1}
 \setcounter{bbx:relatedcount}{0}
 \setcounter{bbx:relatedtotal}{0}
-\setcounter{cbx@tempcnta}{0}
-\setcounter{cbx@tempcntb}{0}
-\setcounter{cbx@tempcntc}{0}
-\setcounter{cbx@tempcntd}{0}
 \setcounter{caption@flags}{2}
 \setcounter{continuedfloat}{0}
 \setcounter{subfigure}{0}

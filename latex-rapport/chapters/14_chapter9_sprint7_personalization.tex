@@ -1,9 +1,9 @@
-\chapter{Sprint 6 — Personalized Recommendations}
+\chapter{Sprint 5 — Personalized Recommendations}
 
 \section*{Introduction}
 \addcontentsline{toc}{section}{Introduction}
 
-Sprint 6 adds a \textbf{personalized recommendation engine} to the AR-API. The system learns
+Sprint 5 adds a \textbf{personalized recommendation engine} to the AR-API. The system learns
 from each user's search queries, click events, and playlist additions, building a continuously
 updated interest profile that drives a blended personalized and trending video feed. Three new
 PostgreSQL tables and one Alembic migration extend the schema; the new module integrates
@@ -14,8 +14,8 @@ seamlessly with the existing FastAPI layered architecture.
 
 \begin{table}[H]
 \centering
-\caption{Sprint 6 Backlog}
-\label{tab:sprint6_backlog}
+\caption{Sprint 5 Backlog}
+\label{tab:sprint5_backlog_rec}
 \begin{tabularx}{\textwidth}{clXcc}
 \toprule
 \textbf{ID} & \textbf{Story} & \textbf{Task} & \textbf{Effort (d)} & \textbf{Prio.} \\
@@ -35,7 +35,7 @@ T6.8 & US-17 & \texttt{GET /recommendations} endpoint with limit and refresh par
 %% ─── Design ─────────────────────────────────────────────────────────────────
 \section{Design}
 
-\subsection{Use Case Diagram for Sprint 6}
+\subsection{Use Case Diagram for Sprint 5}
 
 Figure~\ref{fig:uc_sprint6} shows the actors and primary use cases for the recommendation
 system. The \emph{Licensed User} drives the system through searches and video interactions,
@@ -74,7 +74,7 @@ while the \emph{Videos Search API} serves as an internal candidate provider.
   {$\langle\langle$persists$\rangle\rangle$} (10.4,-1.0);
 
 \end{tikzpicture}
-\caption{Sprint 6 use case diagram — Recommendation System}
+\caption{Sprint 5 use case diagram — Recommendation System}
 \label{fig:uc_sprint6}
 \end{figure}
 
@@ -627,7 +627,7 @@ the portal, ensuring a consistent look and feel.
 \section*{Conclusion}
 \addcontentsline{toc}{section}{Conclusion}
 
-Sprint 6 introduced a \textbf{personalized recommendation engine} driven by real-time
+Sprint 5 introduced a \textbf{personalized recommendation engine} driven by real-time
 behavioural signals — search queries, click events, and playlist additions. A per-user interest
 profile with exponential weight decay captures evolving preferences without requiring scheduled
 recomputation jobs. The blended candidate pipeline, combining personalized and trending results

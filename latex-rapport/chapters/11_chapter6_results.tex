@@ -1,25 +1,31 @@
-\chapter{Sprint 4 — Agentic Helper: RAG and Classifier Pipeline}
+\chapter{Sprint 3 — Agentic Helper: RAG, Classification, Search Orchestration and Voice Transcription}
 
 \section*{Introduction}
 \addcontentsline{toc}{section}{Introduction}
 
-Sprint 4 delivers the backbone of the Agentic Helper: a \textbf{Retrieval-Augmented Generation
-(RAG)} layer on top of \texttt{Qdrant}, a two-level \textbf{classifier pipeline} that routes
-every chat message, a \textbf{prompt management} structure with LangSmith support, and a
-sliding-window \textbf{conversation memory}. This sprint provides the grounded, cost-aware chat
-experience that later sprints will extend with the ReAct agent, voice transcription, and FAQ
-vector administration.
+Sprint 3 builds the full Agentic Helper service across two development phases. The first phase
+delivers the backbone: a \textbf{Retrieval-Augmented Generation (RAG)} layer on top of
+\texttt{Qdrant}, a two-level \textbf{classifier pipeline} that routes every chat message, a
+\textbf{prompt management} structure with LangSmith support, and a sliding-window
+\textbf{conversation memory}. The second phase upgrades this foundation into a production-grade
+\textbf{v2 architecture}: a deterministic \textbf{search orchestrator}, a structured
+\textbf{filter extractor}, a CRAG-pattern \textbf{Agentic RAG} loop with relevance grading and
+corrective re-retrieval, a \textbf{FAQ vector administration} API, and an \textbf{OpenAI Whisper}
+voice transcription endpoint. Together they form the complete AI backend that the Next.js portals
+consume in Sprint 4.
 
 %% ─── Sprint Backlog ─────────────────────────────────────────────────────────
 \section{Sprint Backlog}
 
 \begin{table}[H]
 \centering
-\caption{Sprint 4 Backlog}
-\label{tab:sprint4_backlog}
+\caption{Sprint 3 Backlog}
+\label{tab:sprint3_backlog}
 \begin{tabularx}{\textwidth}{clXcc}
 \toprule
 \textbf{ID} & \textbf{Story} & \textbf{Task} & \textbf{Effort (d)} & \textbf{Prio.} \\
+\midrule
+\multicolumn{5}{l}{\textit{Phase A — RAG Foundation and Classifier Pipeline}} \\
 \midrule
 T4.1 & US-11 & Agentic Helper FastAPI scaffolding with API key + user-id headers & 0.5 & M \\
 T4.2 & US-12 & Qdrant collection for \texttt{knowledge\_chunks}-style payloads & 0.5 & M \\
@@ -30,6 +36,21 @@ T4.6 & US-12 & RAG classifier LLM (need\_rag / direct)                          
 T4.8 & US-11 & Prompt files and three-layer prompt structure                      & 0.5 & M \\
 T4.9 & US-11 & Sliding-window memory for conversation history                     & 0.5 & M \\
 T4.10 & US-11 & Embed AI chatbot widget in both portals                           & 1 & M \\
+\midrule
+\multicolumn{5}{l}{\textit{Phase B — v2 Orchestrator, Agentic RAG and FAQ Admin}} \\
+\midrule
+T5.1 & US-11 & \texttt{VideoSearchFilterPlan} structured LLM output              & 1 & M \\
+T5.2 & US-11 & Deterministic \texttt{VideoSearchService} over \texttt{/advanced-search} & 1 & M \\
+T5.3 & US-11 & ReAct agent retained as fallback for complex tool workflows & 1 & M \\
+T5.4 & US-11 & Search state, pagination follow-ups, and response metadata             & 0.5 & S \\
+T5.11 & US-11 & Recommendation events API (\texttt{/recommendations/events/*})      & 1 & M \\
+T5.12 & US-11 & User interest profile model + blend ranking service               & 1 & M \\
+T5.13 & US-11 & Search portal instrumentation (search/click events)               & 1 & M \\
+T5.14 & US-11 & Anti-repetition ranking (seen suppression, freshness, exploration) & 1 & M \\
+T5.15 & US-11 & Query rewriting for retrieval-optimised RAG queries               & 0.5 & S \\
+T5.16 & US-11 & Relevance grading with corrective re-retrieval (CRAG pattern)     & 1   & S \\
+T5.17 & US-11 & Semantic query enrichment for video search (vector optimisation)  & 0.5 & S \\
+T5.5  & US-13 & \texttt{/api/v1/transcribe} endpoint forwarding to OpenAI Whisper & 1   & M \\
 \bottomrule
 \end{tabularx}
 \end{table}
@@ -37,9 +58,9 @@ T4.10 & US-11 & Embed AI chatbot widget in both portals                         
 %% ─── Design ─────────────────────────────────────────────────────────────────
 \section{Design}
 
-\subsection{Use Case Diagram for Sprint 4}
+\subsection{Use Case Diagram for Sprint 3}
 
-Sprint 4 refines the \emph{AI chat assistant} and \emph{AI support chat} use cases of the global
+Sprint 3 refines the \emph{AI chat assistant} and \emph{AI support chat} use cases of the global
 use-case diagram (Figure~\ref{fig:uc_global}) with the internal branching shown in
 Figure~\ref{fig:uc_chat}.
 
@@ -66,16 +87,36 @@ Figure~\ref{fig:uc_chat}.
 \draw[ucassoc] ( 5.9, 1.6) -- (uc_rag);
 \draw[ucassoc] ( 5.9, 1.2) -- (uc_agent);
 \end{tikzpicture}
-\caption{AI chat use-case diagram (Sprint 4 scope)}
+\caption{AI chat use-case diagram (Sprint 3 scope)}
 \label{fig:uc_chat}
 \end{figure}
 
-\subsection{Class Diagram for Sprint 4}
+\subsection{Class Diagram for Sprint 3}
 
-Sprint 4 owns the Agentic Helper knowledge layer: an external Qdrant collection for stored FAQ
+Sprint 3 owns the Agentic Helper knowledge layer: an external Qdrant collection for stored FAQ
 chunks, a payload index on \texttt{source} for source-level replacement, and an in-memory
 sliding history used to keep recent conversational context without requiring a relational chatbot
 database. The full schema is summarized in Chapter~2, Section~2.8.
+
+Phase B introduces the \texttt{VideoSearchFilterPlan} Pydantic model as the typed contract
+between the router and the deterministic search service:
+
+\begin{lstlisting}[language=python, caption={VideoSearchFilterPlan Pydantic model}]
+class VideoSearchFilterPlan(BaseModel):
+    method: Literal["auto", "semantic", "filters"] = "auto"
+    query: str = ""
+    k: int = Field(default=10, ge=1, le=50)
+    categories: list[str] = Field(default_factory=list)
+    tags: list[str] = Field(default_factory=list)
+    duration_min: float | None = None
+    duration_max: float | None = None
+    locations: list[str] = Field(default_factory=list)
+    resolutions: list[str] = Field(default_factory=list)
+    orientation: list[str] = Field(default_factory=list)
+    video_id: str | None = None
+    offset: int = Field(default=0, ge=0)
+    limit: int = Field(default=10, ge=1, le=50)
+\end{lstlisting}
 
 \subsection{Sequence Diagram: Qdrant Retrieval}
 
@@ -113,6 +154,50 @@ the RAG classifier decides that the knowledge base must be consulted.
 \end{tikzpicture}
 \caption{Qdrant RAG retrieval sequence}
 \label{fig:seq_vectorsearch}
+\end{figure}
+
+\subsection{Sequence Diagram: v2 Auto Routing and Advanced Search}
+
+Figure~\ref{fig:seq_agent} shows the Phase B v2 flow. A request first goes through the
+structured router. If the route is \texttt{VIDEO\_SEARCH}, the service loads the previous search
+state, extracts a typed plan, normalizes it deterministically, and calls the advanced hybrid
+search endpoint once.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[x=1cm, y=1cm, font=\fontsize{7}{8}\selectfont]
+\node[sdFE]   (pUser)   at ( 0.0, 0) {User};
+\node[sdFE]   (pBFF)    at ( 2.5, 0) {Portal BFF};
+\node[sdBE]   (pChat)   at ( 5.0, 0) {Chat API};
+\node[sdExt]  (pRouter) at ( 7.5, 0) {Router LLM};
+\node[sdData] (pMem)    at (10.0, 0) {Redis\\Memory};
+\node[sdBE]   (pSearch) at (12.5, 0) {VideoSearch\\Service};
+\node[sdData] (pVideo)  at (15.0, 0) {Videos API\\Advanced};
+
+\foreach \x in {0.0, 2.5, 5.0, 7.5, 10.0, 12.5, 15.0}
+  \draw[dashed, gray!50] (\x,-0.3) -- (\x,-12.2);
+
+\draw[sdmsg] (0.0,-0.85) -- node[above, pos=0.5]{search request} (2.5,-0.85);
+\draw[sdmsg] (2.5,-1.55) -- node[above, pos=0.5]{POST /api/v1/chat} (5.0,-1.55);
+\draw[sdmsg] (5.0,-2.25) -- node[above, pos=0.5]{classify route} (7.5,-2.25);
+\draw[sdret] (7.5,-2.95) -- node[above, pos=0.5]{VIDEO\_SEARCH + confidence} (5.0,-2.95);
+\draw[sdmsg] (5.0,-3.65) -- node[above, pos=0.5]{load history + last plan} (10.0,-3.65);
+\draw[sdret] (10.0,-4.35) -- node[above, pos=0.5]{window + search state} (5.0,-4.35);
+\draw[sdmsg] (5.0,-5.05) -- node[above, pos=0.5]{question, history, previous plan} (12.5,-5.05);
+\draw[sdmsg] (12.5,-5.75) to[out=-30,in=30] node[right, pos=0.5]{extract typed plan} (12.5,-6.45);
+\draw[sdmsg] (12.5,-7.15) to[out=-30,in=30] node[right, pos=0.5]{normalize filters + pagination} (12.5,-7.85);
+\draw[sdmsg] (12.5,-8.55) -- node[above, pos=0.5]{POST /advanced-search} (15.0,-8.55);
+\draw[sdret] (15.0,-9.25) -- node[above, pos=0.5]{items, total, execution} (12.5,-9.25);
+\draw[sdmsg] (12.5,-9.95) -- node[above, pos=0.5]{save last plan} (10.0,-9.95);
+\draw[sdret] (12.5,-10.65) -- node[above, pos=0.5]{videos + search action} (5.0,-10.65);
+\draw[sdret] (5.0,-11.35) -- node[above, pos=0.5]{ChatResponse} (0.0,-11.35);
+
+\node[sdnote] at (14.8,-6.35) {Fallback path\\only if advanced\\search is disabled};
+\draw[->, dashed, gray!55] (12.5,-6.45) -- (14.1,-6.35);
+
+\end{tikzpicture}
+\caption{Agentic Helper v2 video search sequence — router, typed plan and advanced search}
+\label{fig:seq_agent}
 \end{figure}
 
 %% ─── Implementation ────────────────────────────────────────────────────────
@@ -232,11 +317,9 @@ Conversation memory uses a \textbf{sliding window}:
   \item The last $N$ turns are fetched from \texttt{chat\_messages}
     (\texttt{CHATBOT\_MEMORY\_WINDOW} env var, default: 10).
   \item History is serialized as plain text (\texttt{user: \ldots} / \texttt{assistant: \ldots}).
-  \item For Sprint 5, the same history window is reused by the structured router, the RAG
-    answer chain, and the video-search planner.
+  \item The same history window is reused by the structured router, the RAG answer chain, and
+    the video-search planner.
 \end{itemize}
-
-\subsection{Delivered Interfaces}
 
 \begin{figure}[H]
 \centering
@@ -245,9 +328,335 @@ Conversation memory uses a \textbf{sliding window}:
 \label{fig:screen_chat_rag}
 \end{figure}
 
+\subsection{v2 Agentic Helper Architecture}
+
+The optimized architecture treats the chatbot as an orchestrated backend system instead of a
+single prompt. The \texttt{/api/v1/chat} endpoint accepts three modes:
+\texttt{default}, \texttt{video\_search}, and \texttt{auto}. In \texttt{auto} mode, a structured
+router returns one of five routes: \texttt{CHAT\_RAG}, \texttt{VIDEO\_SEARCH},
+\texttt{DIRECT}, \texttt{OUT\_OF\_SCOPE}, or \texttt{SUPPORT\_HANDOFF}. This makes routing
+observable and testable before any expensive retrieval or tool execution begins.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+  x=1cm, y=1cm,
+  block/.style={draw=teal!70!black, fill=teal!8, rounded corners=4pt,
+    minimum width=3.2cm, minimum height=0.78cm, align=center,
+    font=\fontsize{8}{9}\selectfont},
+  data/.style={draw=violet!70!black, fill=violet!8, rounded corners=4pt,
+    minimum width=3.0cm, minimum height=0.78cm, align=center,
+    font=\fontsize{8}{9}\selectfont},
+  ext/.style={draw=gray!65, fill=gray!8, rounded corners=4pt,
+    minimum width=3.0cm, minimum height=0.78cm, align=center,
+    font=\fontsize{8}{9}\selectfont},
+  arr/.style={->, >=Stealth, thick}
+]
+\node[block] (api) at (0,0) {\texttt{/api/v1/chat}\\FastAPI endpoint};
+\node[block] (router) at (0,-1.35) {Structured router\\route + confidence};
+\node[block] (rag) at (-4.0,-3.0) {RAG answer chain\\policy + citations};
+\node[block] (search) at (0,-3.0) {VideoSearchService\\typed plan executor};
+\node[block] (direct) at (4.3,-3.0) {Direct / handoff\\guarded response};
+\node[data] (qdrant) at (-4.0,-4.55) {Qdrant\\knowledge chunks};
+\node[ext] (hybrid) at (0,-4.55) {Videos Search API\\\texttt{/advanced-search}};
+\node[data] (redis) at (4.3,-4.55) {Redis memory\\window + state TTL};
+\node[ext] (fallback) at (0,-7.25) {Fallback path\\optional multi-tool path};
+\node[block] (resp) at (0,-6.0) {ChatResponse\\answer, videos, action, metadata};
+
+\draw[arr] (api) -- (router);
+\draw[arr] (router) -- (rag);
+\draw[arr] (router) -- (search);
+\draw[arr] (router) -- (direct);
+\draw[arr] (rag) -- (qdrant);
+\draw[arr] (search) -- (hybrid);
+\draw[arr] (router) -- (redis);
+\draw[arr, dashed, gray!70] (search) -- (fallback);
+\draw[arr] (rag) |- (resp);
+\draw[arr] (search) -- (resp);
+\draw[arr] (direct) |- (resp);
+\end{tikzpicture}
+\caption{Agentic Helper v2 — explicit routing, deterministic search, RAG and memory}
+\label{fig:agentic_helper_v2}
+\end{figure}
+
+\subsection{Deterministic Advanced Video Search}
+
+The original ReAct loop was useful for prototyping, but it was not the best default for a
+high-volume search path. The optimized path is deterministic:
+
+\begin{enumerate}
+  \item \texttt{VideoSearchPlan} is extracted with structured output.
+  \item Server-side normalization applies hard rules for top/trending, newest/oldest,
+    shortest/longest, exact video IDs, categories, orientation, duration, resolution, and
+    pagination follow-ups.
+  \item The plan is converted to the \texttt{/api/videos/advanced-search} payload:
+    \texttt{query}, \texttt{filters}, \texttt{sort}, \texttt{pagination}, and optional
+    \texttt{debug}.
+  \item The client uses strict timeouts, retries, API-key headers, and base-URL fallback.
+  \item The response is shaped into video cards, \texttt{search\_filters},
+    \texttt{search\_action}, \texttt{search\_url}, \texttt{total}, \texttt{next\_offset},
+    \texttt{execution}, and \texttt{fallbacks\_used}.
+\end{enumerate}
+
+This design uses the advanced search engine from Sprint 2 as the single ranking source of truth.
+It avoids unnecessary agent loops for normal searches, reduces token cost, and makes search
+behavior easier to test with deterministic unit tests. The previous ReAct agent remains behind the
+service boundary as a fallback for future exploratory workflows that genuinely need multiple tool
+calls.
+
+\subsection{Semantic Query Enrichment for Video Search}
+
+The deterministic plan extractor produces a \texttt{plan.query} that is the semantic portion of
+the user request after filters have been stripped. To close the vocabulary gap between
+conversational phrases and video metadata embeddings, an optional \textbf{semantic query
+enrichment} step runs between \texttt{extract\_plan} and \texttt{normalize\_plan} inside
+\texttt{VideoSearchService.search()}:
+
+\begin{enumerate}
+  \item The filter extractor produces the raw \texttt{VideoSearchPlan}, including a terse
+    \texttt{plan.query}.
+  \item If \texttt{plan.query} is non-empty, \texttt{LLMService.rewrite\_video\_search\_query()}
+    expands it into a richer form with synonyms, visual descriptors, and contextual terms
+    likely to appear in matching video metadata, under 20 words.
+  \item The enriched query replaces \texttt{plan.query} before normalization and before the
+    \texttt{/api/videos/advanced-search} call.
+\end{enumerate}
+
+The feature is gated by \texttt{video\_search\_query\_rewriting\_enabled} so it can be toggled
+in \texttt{.env} independently of the RAG rewriting flag.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+  x=1cm, y=1cm,
+  block/.style={draw=teal!70!black, fill=teal!8, rounded corners=4pt,
+    minimum width=4.6cm, minimum height=0.82cm, align=center,
+    font=\fontsize{8}{9}\selectfont},
+  data/.style={draw=violet!70!black, fill=violet!8, rounded corners=4pt,
+    minimum width=4.6cm, minimum height=0.82cm, align=center,
+    font=\fontsize{8}{9}\selectfont},
+  ext/.style={draw=gray!65, fill=gray!8, rounded corners=4pt,
+    minimum width=3.2cm, minimum height=0.82cm, align=center,
+    font=\fontsize{8}{9}\selectfont},
+  new/.style={draw=orange!70!black, fill=orange!8, rounded corners=4pt,
+    minimum width=4.6cm, minimum height=0.82cm, align=center,
+    font=\fontsize{8}{9}\selectfont},
+  dec/.style={draw=orange!70!black, fill=orange!10, diamond,
+    aspect=2.6, align=center, inner sep=2pt,
+    font=\fontsize{7.5}{8.5}\selectfont},
+  arr/.style={->, >=Stealth, thick}
+]
+\node[ext]   (q)      at (0,    0)   {User question};
+\node[block] (ext)    at (0,  -1.6)  {Plan Extraction\\[-1pt]\scriptsize\texttt{extract\_plan} → \texttt{VideoSearchPlan}};
+\node[dec]   (chk)    at (0,  -3.3)  {query non-\\empty?};
+\node[new]   (rw)     at (-3.5,-4.8) {Query Enrichment\\[-1pt]\scriptsize\texttt{rewrite\_video\_search\_query}};
+\node[block] (norm)   at (0,  -6.3)  {Plan Normalisation\\[-1pt]\scriptsize\texttt{normalize\_plan}};
+\node[data]  (api)    at (0,  -7.9)  {Advanced Search API\\[-1pt]\scriptsize\texttt{POST /api/videos/advanced-search}};
+\node[block] (resp)   at (0,  -9.5)  {VideoSearchResult\\[-1pt]\scriptsize videos, filters, answer};
+
+\draw[arr] (q)    -- (ext);
+\draw[arr] (ext)  -- (chk);
+\draw[arr] (chk.west) -| node[above, font=\scriptsize, pos=0.2]{yes} (rw.north);
+\draw[arr] (chk.south) -- node[right, font=\scriptsize]{no (skip)} (norm.north);
+\draw[arr] (rw.south) |- (norm.west);
+\draw[arr] (norm) -- (api);
+\draw[arr] (api)  -- (resp);
+
+\node[font=\fontsize{6.5}{8}\selectfont, text=orange!60!black, align=center]
+  at (3.8,-4.8) {New step\\(T5.17)};
+\end{tikzpicture}
+\caption{VideoSearchService pipeline with semantic query enrichment (T5.17)}
+\label{fig:video_query_rewrite}
+\end{figure}
+
+\paragraph{Example.}
+For the query \emph{``funny dog videos''}, the enrichment step produces a richer form such as
+\emph{``hilarious dogs playing tricks humor comedy canine pets funny clips''}, which achieves
+higher cosine similarity against video embeddings derived from matching titles and descriptions.
+
+\subsection{Memory, Citations and Reliability}
+
+Conversation memory now has two implementations. Local development can use
+\texttt{InMemoryChatHistoryStore}, while production can configure \texttt{CHAT\_HISTORY\_REDIS\_URL}
+to store the latest conversation window and search state with a TTL. Search follow-ups such as
+``show more'' or ``same but vertical'' reuse the previous \texttt{VideoSearchPlan} from this
+state store.
+
+RAG responses include source metadata in the API response through \texttt{sources[]} and
+\texttt{citations[]}. Search responses include execution metadata and fallback information from
+the advanced search service.
+
+\subsection{Agentic RAG Pipeline}
+
+The original RAG path retrieved chunks directly from the raw conversational question and passed
+all returned chunks to the LLM without any relevance check. Two weaknesses motivated an upgrade:
+
+\begin{itemize}
+  \item \textbf{Vocabulary mismatch}: a conversational question such as \emph{``what about my
+    cut?''} contains pronouns and implicit references that map poorly to the keyword-dense
+    representations stored in Qdrant.
+  \item \textbf{Context pollution}: low-scoring, off-topic chunks that pass the top-$k$
+    threshold are sent to the answer model unchanged, diluting or contradicting the grounded
+    evidence.
+\end{itemize}
+
+The upgraded pipeline adds two corrective steps that transform the single-hop RAG into a
+multi-step \textbf{Agentic RAG} loop, drawing on the Corrective RAG (CRAG)
+pattern~\cite{crag_2024} and query-rewriting techniques for
+retrieval~\cite{query_rewriting_rag}.
+
+\subsubsection{Step 1 — Query Rewriting}
+
+Before calling the Qdrant retriever, a fast \textbf{classifier-grade LLM call}
+(\texttt{LLMService.rewrite\_rag\_query}) rewrites the conversational question into a
+concise, coreference-resolved, keyword-dense retrieval query. The conversation history window
+is included so the model can resolve pronouns and context fragments:
+
+\begin{center}
+\textit{``what about my cut?''} \quad $\longrightarrow$ \quad
+\textit{``creator revenue share percentage BVIRAL licensing agreement''}
+\end{center}
+
+The original question is preserved for the final answer chain; only the retrieval step uses the
+rewritten query.
+
+\subsubsection{Step 2 — Relevance Grading and Corrective Re-retrieval}
+
+After retrieval, each chunk is graded independently and \textbf{in parallel}
+(\texttt{LLMService.grade\_chunks}) using a structured output call
+(\texttt{with\_structured\_output(ChunkGrade)}). The model assigns a binary
+\texttt{relevant: true/false} per chunk. If the number of relevant chunks falls below a
+configurable threshold (\texttt{rag\_min\_relevant\_chunks}, default~2), the service performs a
+\textbf{corrective re-retrieval} on the original unmodified question, merges the two result
+sets, deduplicates by chunk~id, and caps the combined list at \texttt{rag\_top\_k}.
+
+Both steps are individually gated by feature flags
+(\texttt{rag\_query\_rewriting\_enabled}, \texttt{rag\_relevance\_grading\_enabled}).
+
+Figure~\ref{fig:agentic_rag} illustrates the complete pipeline.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+  x=1cm, y=1cm,
+  block/.style={draw=teal!70!black, fill=teal!8, rounded corners=4pt,
+    minimum width=4.4cm, minimum height=0.84cm, align=center,
+    font=\fontsize{8}{9}\selectfont},
+  data/.style={draw=violet!70!black, fill=violet!8, rounded corners=4pt,
+    minimum width=4.4cm, minimum height=0.84cm, align=center,
+    font=\fontsize{8}{9}\selectfont},
+  ext/.style={draw=gray!65, fill=gray!8, rounded corners=4pt,
+    minimum width=3.2cm, minimum height=0.84cm, align=center,
+    font=\fontsize{8}{9}\selectfont},
+  dec/.style={draw=orange!70!black, fill=orange!10, diamond,
+    aspect=2.8, align=center, inner sep=3pt,
+    font=\fontsize{7.5}{8.5}\selectfont},
+  arr/.style={->, >=Stealth, thick}
+]
+%% ─── Main vertical flow ────────────────────────────────────────────────────
+\node[ext]   (q)     at (0,    0)   {User question};
+\node[block] (rw)    at (0,  -1.7)  {Query Rewriting\\[-1pt]\scriptsize\texttt{rewrite\_rag\_query}};
+\node[data]  (ret)   at (0,  -3.4)  {Qdrant Retrieval\\[-1pt]\scriptsize top-$k$ chunks};
+\node[block] (grade) at (0,  -5.1)  {Relevance Grading\\[-1pt]\scriptsize\texttt{grade\_chunks} (parallel)};
+\node[dec]   (chk)   at (0,  -6.9)  {relevant chunks\\$\geq$ threshold?};
+\node[block] (ans)   at (0,  -9.6)  {Answer with graded context\\[-1pt]\scriptsize\texttt{ask\_with\_context}};
+%% ─── Corrective fallback branch ────────────────────────────────────────────
+\node[data]  (retry) at (5.8, -8.0) {Re-retrieve\\[-1pt]\scriptsize on original question};
+\node[block] (merge) at (5.8, -9.6) {Merge + deduplicate\\[-1pt]\scriptsize top-$k$};
+%% ─── Arrows ─────────────────────────────────────────────────────────────────
+\draw[arr] (q)     -- (rw);
+\draw[arr] (rw)    -- node[right, font=\scriptsize]{\textit{rewritten query}} (ret);
+\draw[arr] (ret)   -- node[right, font=\scriptsize]{\textit{top-$k$ chunks}} (grade);
+\draw[arr] (grade) -- (chk);
+\draw[arr] (chk.south)  -- node[left, font=\scriptsize]{yes} (ans.north);
+\draw[arr] (chk.east)   -| node[above, font=\scriptsize, pos=0.18]{no} (retry);
+\draw[arr] (retry)  -- (merge);
+\draw[arr] (merge.west) -- (ans.east);
+\end{tikzpicture}
+\caption{Agentic RAG pipeline — query rewriting, parallel relevance grading, and corrective re-retrieval}
+\label{fig:agentic_rag}
+\end{figure}
+
+\subsubsection{Configuration}
+
+\begin{table}[H]
+\centering
+\caption{Agentic RAG configuration knobs}
+\label{tab:agentic_rag_config}
+\begin{tabularx}{\textwidth}{llX}
+\toprule
+\textbf{Setting} & \textbf{Default} & \textbf{Effect} \\
+\midrule
+\texttt{rag\_query\_rewriting\_enabled}  & \texttt{true}  & Enable/disable Step~1 query rewriting. \\
+\texttt{rag\_relevance\_grading\_enabled}& \texttt{true}  & Enable/disable Step~2 chunk grading. \\
+\texttt{rag\_min\_relevant\_chunks}      & \texttt{2}     & Threshold below which corrective re-retrieval is triggered. \\
+\texttt{rag\_top\_k}                     & \texttt{4}     & Maximum chunks kept after merging. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Voice Transcription Pipeline}
+
+The \texttt{POST /api/v1/transcribe} endpoint is part of the Agentic Helper service. It accepts
+a multipart audio file and forwards it to \textbf{OpenAI Whisper}
+(\texttt{/v1/audio/transcriptions}), returning the transcribed text. This keeps the Whisper API
+key server-side and provides a single proxy point for both portals.
+
+Figure~\ref{fig:seq_transcribe} captures the full voice-to-chat pipeline, from the browser
+microphone to the Agentic Helper to Whisper.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[x=1cm, y=1cm, font=\fontsize{7}{8}\selectfont]
+\node[sdFE]  (pUser)    at (0,  0) {User\\(browser)};
+\node[sdFE]  (pPortal)  at (3,  0) {Portal BFF\\(Next.js)};
+\node[sdBE]  (pAgent)   at (6,  0) {Agentic\\Helper};
+\node[sdExt] (pWhisper) at (9,  0) {OpenAI\\Whisper};
+
+\foreach \x in {0, 3, 6, 9}
+  \draw[dashed, gray!50] (\x,-0.3) -- (\x,-9.5);
+
+\draw[sdmsg] (0,-0.85) -- node[above, pos=0.5]{click mic button} (3,-0.85);
+\draw[sdmsg] (3,-1.57) -- node[above, pos=0.5]{MediaRecorder.start()} (0,-1.57);
+\draw[sdmsg] (0,-2.29) to[out=-30,in=30] node[right, pos=0.5]{stream audio chunks} (0,-3.01);
+\draw[sdmsg] (0,-3.73) -- node[above, pos=0.5]{stop recording (audio Blob)} (3,-3.73);
+\draw[sdmsg] (3,-4.45) -- node[above, pos=0.5]{POST /api/transcribe (multipart)} (6,-4.45);
+\draw[sdmsg] (6,-5.17) -- node[above, pos=0.5]{POST /v1/audio/transcriptions (Whisper)} (9,-5.17);
+\draw[sdret] (9,-5.89) -- node[above, pos=0.5]{\{text: "transcribed content"\}} (6,-5.89);
+\draw[sdret] (6,-6.61) -- node[above, pos=0.5]{\{transcription\}} (3,-6.61);
+\draw[sdret] (3,-7.33) -- node[above, pos=0.5]{pre-fill chat input} (0,-7.33);
+\draw[sdmsg] (0,-8.05) -- node[above, pos=0.5]{(optional) edit + submit as message} (3,-8.05);
+
+\node[sdnote] at (11.0,-5.53) {Supports mp3,\\mp4, wav, webm\\up to 25MB};
+\draw[->, dashed, gray!50] (9,-5.53) -- (10.3,-5.53);
+
+\end{tikzpicture}
+\caption{Audio transcription sequence diagram — Whisper pipeline}
+\label{fig:seq_transcribe}
+\end{figure}
+
+\subsection{FAQ Vector Administration}
+
+To support non-developer maintenance of the support knowledge base, the Agentic Helper now exposes
+a dedicated vector-management API under \texttt{/api/v1/rag/vectors}. The endpoints allow
+operators to:
+\begin{itemize}
+  \item list stored vectors with pagination and optional source filtering;
+  \item run semantic search over the FAQ collection;
+  \item create a new vector from manual content;
+  \item update an existing vector, automatically re-embedding edited content;
+  \item delete obsolete vectors by point id.
+\end{itemize}
+
+This administrative surface is consumed by the portal BFF routes to power FAQ maintenance screens
+without direct access to Qdrant credentials from the frontend.
+
 \section*{Conclusion}
 \addcontentsline{toc}{section}{Conclusion}
 
-Sprint 4 produced the RAG knowledge base, the two-level classification pipeline, versioned
-prompts, and the sliding-window conversation memory. This is the foundation on top of which the
-Sprint 5 structured router, deterministic search planner, and optional ReAct fallback are built.
+Sprint 3 produced the complete Agentic Helper backend: the RAG knowledge base, two-level
+classification pipeline, versioned prompts, and conversation memory (Phase A), followed by the
+v2 explicit router, deterministic video-search planner, Agentic RAG pipeline with query rewriting
+and corrective re-retrieval, FAQ vector administration API, and the Whisper-backed voice
+transcription endpoint (Phase B). The next sprint wires this AI backend to the two Next.js
+portals and delivers the complete user-facing interface.

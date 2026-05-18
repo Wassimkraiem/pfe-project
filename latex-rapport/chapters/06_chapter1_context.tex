@@ -181,7 +181,7 @@ System modeling used \textbf{UML 2.x}:
 %% ─── 1.5 ─────────────────────────────────────────────────────────────────────
 \section{Sprint Planning}
 
-The work was split into one requirements sprint (Sprint 0) followed by six implementation sprints.
+The work was split into one requirements sprint (Sprint 0) followed by five implementation sprints.
 Table~\ref{tab:sprint_plan} summarizes each sprint name and the delivered outcomes.
 
 \begin{table}[H]
@@ -194,11 +194,10 @@ Table~\ref{tab:sprint_plan} summarizes each sprint name and the delivered outcom
 \midrule
 Sprint 0 & Requirements and Project Setup & Defined actors and use cases, wrote the initial product backlog, validated architecture choices, and prepared the development environment. \\
 Sprint 1 & Onboarding, Auth, and Billing Core & Implemented authentication and onboarding workflows, integrated Stripe subscription payment, and added AR-API background processing with Celery tasks. \\
-Sprint 2 & Video Indexing and Keyword Search & Delivered OpenSearch video ingestion, mapping and aliases, BM25 keyword search, and facet filters for portal browsing. \\
-Sprint 3 & Semantic Search and Hybrid Ranking & Added embedding generation, kNN vector retrieval, parallel lexical + semantic search, and rank fusion with position-aware scoring. \\
-Sprint 4 & RAG Chatbot Foundation & Built the Agentic Helper RAG pipeline with Qdrant retrieval, routing/classification logic, and conversational memory support. \\
-Sprint 5 & Agentic Search, Voice, and FAQ Admin & Delivered ReAct search orchestration, Whisper transcription, chatbot integration in the portals, and FAQ management endpoints/interfaces. \\
-Sprint 6 & Personalized Recommendation Engine & Implemented user-interest profiling from events, candidate generation + blending, trending integration, and anti-repetition ranking in recommendations. \\
+Sprint 2 & Video Indexing and Full-Stack Search & Delivered OpenSearch ingestion, BM25 keyword search, and facet filters (Part A), then added semantic embeddings, kNN vector retrieval, parallel hybrid search, and position-aware rank fusion (Part B). \\
+Sprint 3 & Agentic Helper: RAG, Classification, Search Orchestration and Voice Transcription & Built the RAG pipeline with Qdrant, two-level routing/classification, and conversational memory (Phase A), then upgraded to the v2 deterministic orchestrator, Agentic RAG with CRAG-pattern re-retrieval, FAQ vector administration, and the Whisper voice transcription endpoint (Phase B). \\
+Sprint 4 & Next.js Portals & Delivered the Video Search Portal (Next.js 15) and Authentic Rights Portal (Next.js 16) wired to all backend services, with the portal-side mic button, the shared ChatbotWidget, and the admin workspace. \\
+Sprint 5 & Personalized Recommendation Engine & Implemented user-interest profiling from events, candidate generation + blending, trending integration, and anti-repetition ranking in recommendations. \\
 \bottomrule
 \end{tabularx}
 \end{table}
@@ -206,11 +205,12 @@ Sprint 6 & Personalized Recommendation Engine & Implemented user-interest profil
 %% ─── 1.6 ─────────────────────────────────────────────────────────────────────
 \section{Project Timeline}
 
-The Gantt chart in Figure~\ref{fig:gantt} shows the planned distribution of the seven sprints over
+The Gantt chart in Figure~\ref{fig:gantt} shows the planned distribution of the six sprints over
 the project duration.
 
 \begin{figure}[H]
 \centering
+\resizebox{0.98\textwidth}{!}{%
 \begin{tikzpicture}[x=0.9cm, y=0.55cm,
   bar/.style={draw=blue!55!black, fill=blue!25, rounded corners=2pt},
   bar0/.style={draw=orange!60!black, fill=orange!25, rounded corners=2pt},
@@ -218,23 +218,23 @@ the project duration.
   wk/.style={font=\footnotesize\itshape, anchor=south},
   axis/.style={gray!60}
 ]
-%% Horizontal axis: 14 weeks
-\foreach \x in {0,...,14} {
-  \draw[axis, dashed] (\x,-0.3) -- (\x,-7.7);
+%% Horizontal axis: 16 weeks
+\foreach \x in {0,...,16} {
+  \draw[axis, dashed] (\x,-0.3) -- (\x,-6.7);
 }
-\foreach \x/\w in {0/W1, 2/W3, 4/W5, 6/W7, 8/W9, 10/W11, 12/W13, 14/W15} {
+\foreach \x/\w in {0/W1, 2/W3, 4/W5, 6/W7, 8/W9, 10/W11, 12/W13, 14/W15, 16/W17} {
   \node[wk] at (\x,0.1) {\w};
 }
 
 %% Sprint bars (start, end, y, style, label)
-\draw[bar0] (0,-0.8) rectangle (2,-1.4);   \node[lbl] at (-0.2,-1.1) {Sprint 0};
-\draw[bar]  (2,-1.8) rectangle (4,-2.4);   \node[lbl] at (-0.2,-2.1) {Sprint 1};
-\draw[bar]  (4,-2.8) rectangle (6,-3.4);   \node[lbl] at (-0.2,-3.1) {Sprint 2};
-\draw[bar]  (6,-3.8) rectangle (8,-4.4);   \node[lbl] at (-0.2,-4.1) {Sprint 3};
-\draw[bar]  (8,-4.8) rectangle (10,-5.4);  \node[lbl] at (-0.2,-5.1) {Sprint 4};
-\draw[bar]  (10,-5.8) rectangle (12,-6.4); \node[lbl] at (-0.2,-6.1) {Sprint 5};
-\draw[bar]  (12,-6.8) rectangle (14,-7.4); \node[lbl] at (-0.2,-7.1) {Sprint 6};
-\end{tikzpicture}
+\draw[bar0] (0,-0.8)   rectangle (2,-1.4);   \node[lbl] at (-0.2,-1.1) {Sprint 0};
+\draw[bar]  (2,-1.8)   rectangle (5,-2.4);   \node[lbl] at (-0.2,-2.1) {Sprint 1};
+\draw[bar]  (5,-2.8)   rectangle (8,-3.4);   \node[lbl] at (-0.2,-3.1) {Sprint 2};
+\draw[bar]  (8,-3.8)   rectangle (11,-4.4);  \node[lbl] at (-0.2,-4.1) {Sprint 3};
+\draw[bar]  (11,-4.8)  rectangle (14,-5.4);  \node[lbl] at (-0.2,-5.1) {Sprint 4};
+\draw[bar]  (14,-5.8)  rectangle (16,-6.4);  \node[lbl] at (-0.2,-6.1) {Sprint 5};
+\end{tikzpicture}%
+}
 \caption{Gantt chart of the project sprints}
 \label{fig:gantt}
 \end{figure}
@@ -245,15 +245,16 @@ For clarity, the concrete work completed in each sprint is summarized below:
     validated the target architecture, and set up the development environment.
   \item \textbf{Sprint 1}: Implemented authentication and onboarding flows, integrated Stripe
     subscriptions, and added AR-API background processing with Celery tasks.
-  \item \textbf{Sprint 2}: Delivered OpenSearch ingestion and index setup, BM25 keyword search,
-    and facet-based filtering for browsing.
-  \item \textbf{Sprint 3}: Added embedding generation, kNN vector retrieval, parallel lexical and
-    semantic search, and hybrid ranking.
-  \item \textbf{Sprint 4}: Built the Agentic Helper RAG foundation with Qdrant retrieval,
-    routing/classification, and conversation memory.
-  \item \textbf{Sprint 5}: Delivered ReAct agentic search orchestration, Whisper transcription,
-    chatbot portal integration, and FAQ administration interfaces.
-  \item \textbf{Sprint 6}: Implemented recommendation event tracking, user-interest profiling,
+  \item \textbf{Sprint 2}: Delivered OpenSearch ingestion, BM25 keyword search, facet-based
+    filtering (Part A), then semantic embeddings, kNN retrieval, parallel hybrid search, and
+    position-aware rank fusion (Part B).
+  \item \textbf{Sprint 3}: Built the Agentic Helper RAG foundation with Qdrant retrieval,
+    routing/classification, and conversation memory (Phase A), then upgraded to the v2
+    deterministic orchestrator, Agentic RAG pipeline, and the Whisper voice transcription
+    endpoint (Phase B).
+  \item \textbf{Sprint 4}: Delivered the Video Search Portal and Authentic Rights Portal wired
+    to all backend services, with the portal-side mic integration and the admin workspace.
+  \item \textbf{Sprint 5}: Implemented recommendation event tracking, user-interest profiling,
     candidate blending, trending integration, and anti-repetition ranking.
 \end{itemize}
 

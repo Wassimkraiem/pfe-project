@@ -1,61 +1,74 @@
 \relax 
 \providecommand\zref@newlabel[2]{}
 \providecommand\hyper@newdestlabel[2]{}
-\@writefile{toc}{\contentsline {chapter}{\numberline {8}Sprint 6 — Personalized Recommendations}{81}{chapter.8}\protected@file@percent }
+\def\@LN@column{1}
+\@writefile{toc}{\contentsline {chapter}{\numberline {7}Sprint 5 — Personalized Recommendations}{79}{chapter.7}\protected@file@percent }
 \@writefile{lof}{\addvspace {10\p@ }}
 \@writefile{lot}{\addvspace {10\p@ }}
-\@writefile{toc}{\contentsline {section}{Introduction}{81}{section*.102}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {8.1}Sprint Backlog}{82}{section.8.1}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {8.1}{\ignorespaces Sprint 6 Backlog}}{82}{table.caption.103}\protected@file@percent }
-\newlabel{tab:sprint6_backlog}{{8.1}{82}{Sprint 6 Backlog}{table.caption.103}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {8.2}Design}{82}{section.8.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {8.2.1}Use Case Diagram for Sprint 6}{82}{subsection.8.2.1}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {8.1}{\ignorespaces Sprint 6 use case diagram — Recommendation System}}{83}{figure.caption.104}\protected@file@percent }
-\newlabel{fig:uc_sprint6}{{8.1}{83}{Sprint 6 use case diagram — Recommendation System}{figure.caption.104}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {8.2.2}Recommendation Algorithm Overview}{83}{subsection.8.2.2}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {8.2}{\ignorespaces Three-stage recommendation pipeline}}{83}{figure.caption.105}\protected@file@percent }
-\newlabel{fig:rec_pipeline}{{8.2}{83}{Three-stage recommendation pipeline}{figure.caption.105}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {8.2.3}Sequence Diagrams}{84}{subsection.8.2.3}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{Search Event Ingestion}{84}{subsection.8.2.3}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {8.3}{\ignorespaces Search event ingestion — interest profile update sequence}}{84}{figure.caption.106}\protected@file@percent }
-\newlabel{fig:seq_rec_search}{{8.3}{84}{Search event ingestion — interest profile update sequence}{figure.caption.106}{}}
-\@writefile{toc}{\contentsline {subsubsection}{Click / View Event Ingestion}{84}{figure.caption.106}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {8.4}{\ignorespaces Click/view event ingestion sequence}}{85}{figure.caption.107}\protected@file@percent }
-\newlabel{fig:seq_rec_click}{{8.4}{85}{Click/view event ingestion sequence}{figure.caption.107}{}}
-\@writefile{toc}{\contentsline {subsubsection}{Personalized Recommendation Feed}{85}{figure.caption.107}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {8.5}{\ignorespaces Personalized recommendation feed — full sequence diagram}}{86}{figure.caption.108}\protected@file@percent }
-\newlabel{fig:seq_rec_feed}{{8.5}{86}{Personalized recommendation feed — full sequence diagram}{figure.caption.108}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {8.3}Implementation}{86}{section.8.3}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {8.3.1}Recommendation Module}{86}{subsection.8.3.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{API Endpoints}{87}{subsection.8.3.1}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {8.2}{\ignorespaces Recommendation endpoints}}{87}{table.caption.109}\protected@file@percent }
-\newlabel{tab:rec_endpoints}{{8.2}{87}{Recommendation endpoints}{table.caption.109}{}}
-\@writefile{toc}{\contentsline {subsubsection}{Interest Profile and Weight Decay}{87}{table.caption.109}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Update rule.}{87}{table.caption.109}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Decay over time.}{88}{table.caption.109}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {8.3}{\ignorespaces Weight survival without further reinforcement ($\lambda = 0.97$)}}{88}{table.caption.110}\protected@file@percent }
-\newlabel{tab:decay_survival}{{8.3}{88}{Weight survival without further reinforcement ($\lambda = 0.97$)}{table.caption.110}{}}
-\@writefile{toc}{\contentsline {paragraph}{Boost deltas by signal type.}{88}{table.caption.110}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {8.4}{\ignorespaces Weight boost deltas by signal type}}{88}{table.caption.111}\protected@file@percent }
-\newlabel{tab:weight_boosts}{{8.4}{88}{Weight boost deltas by signal type}{table.caption.111}{}}
-\@writefile{toc}{\contentsline {subsubsection}{Seed Construction}{89}{table.caption.111}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{Candidate Retrieval and Blending}{89}{Item.82}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Personalized candidates — how $S_p$ is computed.}{89}{Item.82}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Trending candidates — how $S_t$ is computed.}{89}{Item.82}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Composite score.}{90}{Item.82}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{Anti-Repetition Controls}{90}{Item.82}\protected@file@percent }
-\newlabel{sec:anti_rep}{{8.3.1}{90}{Anti-Repetition Controls}{Item.82}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {8.6}{\ignorespaces Anti-repetition pipeline — five ordered mechanisms applied after scoring}}{91}{figure.caption.112}\protected@file@percent }
-\newlabel{fig:anti_rep_pipeline}{{8.6}{91}{Anti-repetition pipeline — five ordered mechanisms applied after scoring}{figure.caption.112}{}}
-\@writefile{toc}{\contentsline {subsubsection}{Resolved Entities}{92}{figure.caption.112}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {8.3.2}Module Registration}{92}{subsection.8.3.2}\protected@file@percent }
-\@writefile{lol}{\contentsline {lstlisting}{\numberline {8.1}{\ignorespaces Recommendation router inclusion in AR-API}}{92}{lstlisting.8.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {8.3.3}Frontend Integration}{92}{subsection.8.3.3}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {8.7}{\ignorespaces ``Recommended for You'' section on the Video Search Portal home dashboard}}{93}{figure.caption.113}\protected@file@percent }
-\newlabel{fig:rec_ui}{{8.7}{93}{``Recommended for You'' section on the Video Search Portal home dashboard}{figure.caption.113}{}}
-\@writefile{toc}{\contentsline {section}{Conclusion}{93}{figure.caption.113}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{Introduction}{79}{section*.100}\protected@file@percent }
+\def\@LN@column{1}
+\@writefile{toc}{\contentsline {section}{\numberline {7.1}Sprint Backlog}{80}{section.7.1}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {7.1}{\ignorespaces Sprint 5 Backlog}}{80}{table.caption.101}\protected@file@percent }
+\newlabel{tab:sprint5_backlog_rec}{{7.1}{80}{Sprint 5 Backlog}{table.caption.101}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {7.2}Design}{80}{section.7.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.2.1}Use Case Diagram for Sprint 5}{80}{subsection.7.2.1}\protected@file@percent }
+\def\@LN@column{1}
+\@writefile{lof}{\contentsline {figure}{\numberline {7.1}{\ignorespaces Sprint 5 use case diagram — Recommendation System}}{81}{figure.caption.102}\protected@file@percent }
+\newlabel{fig:uc_sprint6}{{7.1}{81}{Sprint 5 use case diagram — Recommendation System}{figure.caption.102}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.2.2}Recommendation Algorithm Overview}{81}{subsection.7.2.2}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {7.2}{\ignorespaces Three-stage recommendation pipeline}}{81}{figure.caption.103}\protected@file@percent }
+\newlabel{fig:rec_pipeline}{{7.2}{81}{Three-stage recommendation pipeline}{figure.caption.103}{}}
+\def\@LN@column{1}
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.2.3}Sequence Diagrams}{82}{subsection.7.2.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{Search Event Ingestion}{82}{subsection.7.2.3}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {7.3}{\ignorespaces Search event ingestion — interest profile update sequence}}{82}{figure.caption.104}\protected@file@percent }
+\newlabel{fig:seq_rec_search}{{7.3}{82}{Search event ingestion — interest profile update sequence}{figure.caption.104}{}}
+\@writefile{toc}{\contentsline {subsubsection}{Click / View Event Ingestion}{82}{figure.caption.104}\protected@file@percent }
+\def\@LN@column{1}
+\@writefile{lof}{\contentsline {figure}{\numberline {7.4}{\ignorespaces Click/view event ingestion sequence}}{83}{figure.caption.105}\protected@file@percent }
+\newlabel{fig:seq_rec_click}{{7.4}{83}{Click/view event ingestion sequence}{figure.caption.105}{}}
+\@writefile{toc}{\contentsline {subsubsection}{Personalized Recommendation Feed}{83}{figure.caption.105}\protected@file@percent }
+\def\@LN@column{1}
+\@writefile{lof}{\contentsline {figure}{\numberline {7.5}{\ignorespaces Personalized recommendation feed — full sequence diagram}}{84}{figure.caption.106}\protected@file@percent }
+\newlabel{fig:seq_rec_feed}{{7.5}{84}{Personalized recommendation feed — full sequence diagram}{figure.caption.106}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {7.3}Implementation}{84}{section.7.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.3.1}Recommendation Module}{84}{subsection.7.3.1}\protected@file@percent }
+\def\@LN@column{1}
+\@writefile{toc}{\contentsline {subsubsection}{API Endpoints}{85}{subsection.7.3.1}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {7.2}{\ignorespaces Recommendation endpoints}}{85}{table.caption.107}\protected@file@percent }
+\newlabel{tab:rec_endpoints}{{7.2}{85}{Recommendation endpoints}{table.caption.107}{}}
+\@writefile{toc}{\contentsline {subsubsection}{Interest Profile and Weight Decay}{85}{table.caption.107}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Update rule.}{85}{table.caption.107}\protected@file@percent }
+\def\@LN@column{1}
+\@writefile{toc}{\contentsline {paragraph}{Decay over time.}{86}{table.caption.107}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {7.3}{\ignorespaces Weight survival without further reinforcement ($\lambda = 0.97$)}}{86}{table.caption.108}\protected@file@percent }
+\newlabel{tab:decay_survival}{{7.3}{86}{Weight survival without further reinforcement ($\lambda = 0.97$)}{table.caption.108}{}}
+\@writefile{toc}{\contentsline {paragraph}{Boost deltas by signal type.}{86}{table.caption.108}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {7.4}{\ignorespaces Weight boost deltas by signal type}}{86}{table.caption.109}\protected@file@percent }
+\newlabel{tab:weight_boosts}{{7.4}{86}{Weight boost deltas by signal type}{table.caption.109}{}}
+\def\@LN@column{1}
+\@writefile{toc}{\contentsline {subsubsection}{Seed Construction}{87}{table.caption.109}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{Candidate Retrieval and Blending}{87}{Item.81}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Personalized candidates — how $S_p$ is computed.}{87}{Item.81}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Trending candidates — how $S_t$ is computed.}{87}{Item.81}\protected@file@percent }
+\def\@LN@column{1}
+\@writefile{toc}{\contentsline {paragraph}{Composite score.}{88}{Item.81}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{Anti-Repetition Controls}{88}{Item.81}\protected@file@percent }
+\newlabel{sec:anti_rep}{{7.3.1}{88}{Anti-Repetition Controls}{Item.81}{}}
+\def\@LN@column{1}
+\@writefile{lof}{\contentsline {figure}{\numberline {7.6}{\ignorespaces Anti-repetition pipeline — five ordered mechanisms applied after scoring}}{89}{figure.caption.110}\protected@file@percent }
+\newlabel{fig:anti_rep_pipeline}{{7.6}{89}{Anti-repetition pipeline — five ordered mechanisms applied after scoring}{figure.caption.110}{}}
+\def\@LN@column{1}
+\@writefile{toc}{\contentsline {subsubsection}{Resolved Entities}{90}{figure.caption.110}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.3.2}Module Registration}{90}{subsection.7.3.2}\protected@file@percent }
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {7.1}{\ignorespaces Recommendation router inclusion in AR-API}}{90}{lstlisting.7.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.3.3}Frontend Integration}{90}{subsection.7.3.3}\protected@file@percent }
+\def\@LN@column{1}
+\@writefile{lof}{\contentsline {figure}{\numberline {7.7}{\ignorespaces ``Recommended for You'' section on the Video Search Portal home dashboard}}{91}{figure.caption.111}\protected@file@percent }
+\newlabel{fig:rec_ui}{{7.7}{91}{``Recommended for You'' section on the Video Search Portal home dashboard}{figure.caption.111}{}}
+\@writefile{toc}{\contentsline {section}{Conclusion}{91}{figure.caption.111}\protected@file@percent }
 \@setckpt{chapters/14_chapter9_sprint7_personalization}{
-\setcounter{page}{94}
+\setcounter{page}{92}
 \setcounter{equation}{0}
 \setcounter{enumi}{2}
 \setcounter{enumii}{0}
@@ -64,7 +77,7 @@
 \setcounter{footnote}{0}
 \setcounter{mpfootnote}{0}
 \setcounter{part}{0}
-\setcounter{chapter}{8}
+\setcounter{chapter}{7}
 \setcounter{section}{3}
 \setcounter{subsection}{3}
 \setcounter{subsubsection}{0}
@@ -77,12 +90,9 @@
 \setcounter{lstnumber}{4}
 \setcounter{FancyVerbLine}{0}
 \setcounter{linenumber}{1}
-\setcounter{LN@truepage}{108}
+\setcounter{LN@truepage}{107}
 \setcounter{FancyVerbWriteLine}{0}
-\setcounter{FancyVerbBufferIndex}{0}
-\setcounter{FancyVerbBufferLength}{0}
 \setcounter{FancyVerbBufferLine}{0}
-\setcounter{FV@oldbufferlength}{0}
 \setcounter{FV@TrueTabGroupLevel}{0}
 \setcounter{FV@TrueTabCounter}{0}
 \setcounter{FV@HighlightLinesStart}{0}
@@ -91,13 +101,12 @@
 \setcounter{FV@BreakBufferDepth}{0}
 \setcounter{float@type}{16}
 \setcounter{minted@FancyVerbLineTemp}{0}
-\setcounter{minted@pygmentizecounter}{0}
 \setcounter{listing}{0}
 \setcounter{parentequation}{0}
 \setcounter{section@level}{0}
-\setcounter{Item}{82}
+\setcounter{Item}{81}
 \setcounter{Hfootnote}{0}
-\setcounter{bookmark@seq@number}{130}
+\setcounter{bookmark@seq@number}{123}
 \setcounter{tabx@nest}{0}
 \setcounter{listtotal}{0}
 \setcounter{listcount}{0}
@@ -107,9 +116,9 @@
 \setcounter{citetotal}{0}
 \setcounter{multicitecount}{0}
 \setcounter{multicitetotal}{0}
-\setcounter{instcount}{2}
-\setcounter{maxnames}{3}
-\setcounter{minnames}{3}
+\setcounter{instcount}{0}
+\setcounter{maxnames}{2}
+\setcounter{minnames}{1}
 \setcounter{maxitems}{3}
 \setcounter{minitems}{1}
 \setcounter{citecounter}{0}
@@ -212,10 +221,6 @@
 \setcounter{smartand}{1}
 \setcounter{bbx:relatedcount}{0}
 \setcounter{bbx:relatedtotal}{0}
-\setcounter{cbx@tempcnta}{0}
-\setcounter{cbx@tempcntb}{2}
-\setcounter{cbx@tempcntc}{0}
-\setcounter{cbx@tempcntd}{-1}
 \setcounter{caption@flags}{2}
 \setcounter{continuedfloat}{0}
 \setcounter{subfigure}{0}
