@@ -12,8 +12,12 @@ import {
   LogOut,
   ListVideo,
   Upload,
+  Film,
+  MessagesSquare,
+  Bot,
+  BookOpen,
 } from "lucide-react";
-import { Box, Typography, Button } from "@mui/material";
+import { Box, Button } from "@mui/material";
 import { useClerk, useUser } from "@clerk/nextjs";
 import type { LucideIcon } from "lucide-react";
 
@@ -62,6 +66,26 @@ const adminNavItems: NavItem[] = [
     label: "Quotes Status",
     href: "/dashboard/quotes-status",
     icon: ClipboardList,
+  },
+  {
+    label: "Submitted Videos",
+    href: "/dashboard/admin-videos",
+    icon: Film,
+  },
+  {
+    label: "User Conversations",
+    href: "/dashboard/admin-conversations",
+    icon: MessagesSquare,
+  },
+  {
+    label: "Chatbot Tester",
+    href: "/dashboard/admin-chatbot",
+    icon: Bot,
+  },
+  {
+    label: "FAQ Manager",
+    href: "/dashboard/admin-faqs",
+    icon: BookOpen,
   },
 ];
 

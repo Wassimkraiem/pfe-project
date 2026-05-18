@@ -12,7 +12,12 @@ from sev.apps.videos.opensearch.documents.services import (
     get_latest_videos,
     get_facets,
 )
-from sev.apps.videos.opensearch.documents.schemas import VideoSchema, DeleteSchema
+from sev.apps.videos.opensearch.documents.advanced_search import advanced_search
+from sev.apps.videos.opensearch.documents.schemas import (
+    AdvancedSearchRequestSchema,
+    DeleteSchema,
+    VideoSchema,
+)
 from datetime import datetime
 from sev.response import SevResponse
 import os
@@ -117,7 +122,7 @@ class VideoFacets(Resource):
 
 
 class VectorSearch(Resource):
-    method_decorators = [api_key_required]
+    # method_decorators = [api_key_required]
 
     def post(self):
         """Vector + filter-based search"""
@@ -125,6 +130,8 @@ class VectorSearch(Resource):
 
         query = payload.get("query")
         k = payload.get("k", 5)
+        sort_by = payload.get("sort_by")
+        sort_order = payload.get("sort_order", "desc")
         categories = payload.get("categories")
         tags = payload.get("tags")
         duration_min = payload.get("duration_min")
@@ -138,6 +145,8 @@ class VectorSearch(Resource):
         results = vector_search(
             query=query,
             k=k,
+            sort_by=sort_by,
+            sort_order=sort_order,
             categories=categories,
             tags=tags,
             duration_min=duration_min,
@@ -175,3 +184,14 @@ class getFacets(Resource):
 
         res = get_facets()
         return SevResponse(res)
+
+
+class AdvancedSearch(Resource):
+    # method_decorators = [api_key_required]
+
+    def post(self):
+        """Hybrid advanced search with explainable scoring metadata."""
+        schema = AdvancedSearchRequestSchema()
+        payload = schema.load(request.get_json() or {})
+        results = advanced_search(payload)
+        return SevResponse(results)

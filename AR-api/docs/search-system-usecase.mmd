@@ -1,0 +1,57 @@
+flowchart LR
+    %% Search System Use-Case Diagram
+    %% Scope: videosearchv0 search page + API proxy + videos-search-api + optional download handoff
+
+    user[User]
+    searchpage[Search Page<br/>videosearchv0]
+    proxy[Next.js API Route<br/>POST /api/videos/advanced-search]
+    videosapi[videos-search-api<br/>POST /api/videos/advanced-search]
+    os[(OpenSearch)]
+    ar[AR-api]
+    canto[Canto API]
+    pg[(PostgreSQL)]
+
+    subgraph FE["Frontend Use Cases (Search UX)"]
+        s1([Enter query + filters + sort])
+        s2([Submit advanced search request])
+        s3([View paginated results + facets])
+        s4([Open video details page])
+        s5([Download selected video])
+    end
+
+    subgraph BE["Backend Use Cases"]
+        s6([Translate request and execute search])
+        s7([Run OpenSearch query + aggregations])
+        s8([Return ranked items + execution metadata])
+        s9([Issue signed Canto download URL<br/>GET /canto/videos/{video_id}/download])
+        s10([Record download event<br/>into downloaded_videos])
+    end
+
+    user --> s1
+    user --> s4
+    user --> s5
+    s1 --> s2
+    s2 --> searchpage
+    searchpage --> proxy
+    proxy --> videosapi
+    videosapi --> s6
+    s6 --> s7
+    s7 --> os
+    os --> s8
+    s8 --> videosapi
+    videosapi --> proxy
+    proxy --> searchpage
+    searchpage --> s3
+    s3 --> user
+
+    s5 --> searchpage
+    searchpage --> s9
+    s9 --> ar
+    ar --> canto
+    canto --> ar
+    ar --> s10
+    s10 --> pg
+    ar --> searchpage
+
+    note2["Download flow is authenticated and tracked:<br/>AR-api returns a signed URL and logs the event in PostgreSQL."]
+    s9 --- note2

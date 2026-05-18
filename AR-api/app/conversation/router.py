@@ -1,7 +1,9 @@
 from fastapi import APIRouter, Depends, Query
 
-from app.auth.dependencies import get_current_user
+from app.auth.dependencies import get_current_user, require_admin_role
 from app.conversation.schemas import (
+    ConversationAdminDetailSchema,
+    ConversationAdminSummarySchema,
     ConversationCreateSchema,
     ConversationDetailSchema,
     ConversationOutSchema,
@@ -41,6 +43,34 @@ async def list_conversations(
             ConversationOutSchema.model_validate(c).model_dump()
             for c in conversations
         ]
+    )
+
+
+@router.get("/admin/all")
+async def admin_list_conversations(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=200),
+    _: None = Depends(require_admin_role),
+    service: ConversationService = Depends(),
+):
+    conversations = await service.admin_list_all(skip=skip, limit=limit)
+    return ArResponse(
+        data=[
+            ConversationAdminSummarySchema.model_validate(c).model_dump()
+            for c in conversations
+        ]
+    )
+
+
+@router.get("/admin/{conversation_id}")
+async def admin_get_conversation(
+    conversation_id: int,
+    _: None = Depends(require_admin_role),
+    service: ConversationService = Depends(),
+):
+    conversation = await service.admin_get_with_messages(conversation_id)
+    return ArResponse(
+        data=ConversationAdminDetailSchema.model_validate(conversation).model_dump()
     )
 
 

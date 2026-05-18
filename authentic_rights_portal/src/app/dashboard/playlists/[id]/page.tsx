@@ -173,26 +173,88 @@ export default function PlaylistDetailPage() {
   if (!playlist) return <Alert severity="error">Playlist not found</Alert>;
 
   return (
-    <Box>
-      <Button startIcon={<ArrowLeft style={{ width: 15, height: 15 }} />} onClick={() => router.push("/dashboard/playlists")} sx={{ textTransform: "none", color: "#6b7280", mb: 1.5, fontSize: 13, p: 0.5 }}>
+    <Box sx={{ pb: 2 }}>
+      <Button
+        startIcon={<ArrowLeft style={{ width: 15, height: 15 }} />}
+        onClick={() => router.push("/dashboard/playlists")}
+        sx={{ textTransform: "none", color: "#6b7280", mb: 1.5, fontSize: 13, p: 0.5 }}
+      >
         Back
       </Button>
 
-      <Box sx={{ mb: 2 }}>
-        <Typography fontSize={18} fontWeight={700} color="#111827">{playlist.title}</Typography>
-        {playlist.description && <Typography fontSize={13} color="text.secondary">{playlist.description}</Typography>}
-        <Typography fontSize={12} color="text.secondary" sx={{ mt: 0.25 }}>{playlist.videos.length} video{playlist.videos.length !== 1 ? "s" : ""}</Typography>
+      <Box
+        sx={{
+          mb: 2.5,
+          p: { xs: 1.75, sm: 2.25 },
+          borderRadius: 3,
+          background: "linear-gradient(135deg, #111827 0%, #1e3a8a 55%, #1d4ed8 100%)",
+          color: "white",
+          boxShadow: "0 14px 40px rgba(30, 58, 138, 0.24)",
+        }}
+      >
+        <Typography fontSize={12} fontWeight={600} sx={{ opacity: 0.72, letterSpacing: "0.08em", textTransform: "uppercase", mb: 0.5 }}>
+          Playlist
+        </Typography>
+        <Typography fontSize={{ xs: 20, sm: 24 }} fontWeight={800} sx={{ lineHeight: 1.2 }}>
+          {playlist.title}
+        </Typography>
+        {playlist.description && (
+          <Typography fontSize={13} sx={{ mt: 0.8, opacity: 0.9, maxWidth: 740 }}>
+            {playlist.description}
+          </Typography>
+        )}
+        <Box sx={{ display: "flex", gap: 0.8, flexWrap: "wrap", mt: 1.3 }}>
+          <Chip
+            label={`${playlist.videos.length} video${playlist.videos.length !== 1 ? "s" : ""}`}
+            size="small"
+            sx={{ bgcolor: "rgba(255,255,255,0.18)", color: "white", fontWeight: 600, borderRadius: 2 }}
+          />
+          <Chip
+            label="Grid preview"
+            size="small"
+            sx={{ bgcolor: "rgba(255,255,255,0.12)", color: "white", borderRadius: 2 }}
+          />
+        </Box>
       </Box>
 
       {error && <Alert severity="error" sx={{ mb: 1.5, py: 0, fontSize: 13 }}>{error}</Alert>}
 
       {playlist.videos.length === 0 ? (
-        <Box sx={{ textAlign: "center", py: 6, border: "1px dashed #d1d5db", borderRadius: 2 }}>
-          <Film style={{ width: 36, height: 36, color: "#9ca3af", margin: "0 auto 8px" }} />
-          <Typography fontSize={13} color="text.secondary">No videos yet. Use the search assistant to add some.</Typography>
+        <Box
+          sx={{
+            textAlign: "center",
+            py: 7,
+            border: "1px dashed #d1d5db",
+            borderRadius: 3,
+            background:
+              "radial-gradient(circle at top, rgba(59,130,246,0.12), rgba(255,255,255,0) 58%), #fafafa",
+          }}
+        >
+          <Box
+            sx={{
+              width: 54,
+              height: 54,
+              borderRadius: "50%",
+              bgcolor: "rgba(17,24,39,0.07)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              mx: "auto",
+              mb: 1,
+            }}
+          >
+            <Film style={{ width: 26, height: 26, color: "#6b7280" }} />
+          </Box>
+          <Typography fontSize={15} fontWeight={700} color="#111827">
+            This playlist is empty
+          </Typography>
+          <Typography fontSize={13} color="text.secondary" sx={{ mt: 0.5 }}>
+            Use the search assistant to add videos, then preview and manage them here.
+          </Typography>
         </Box>
       ) : (
-        <Grid container spacing={1.5}>
+        <Box sx={{ maxWidth: 1160, mx: "auto" }}>
+          <Grid container spacing={2}>
           {playlist.videos.map((item) => {
             const info = vmap.get(item.video_id);
             const title = info?.title ?? item.video_id;
@@ -201,58 +263,138 @@ export default function PlaylistDetailPage() {
             const hasDl = !!info?.downloadUrl;
 
             return (
-              <Grid size={{ xs: 6, sm: 4, md: 3 }} key={item.id}>
-                <Card variant="outlined" sx={{ borderRadius: 1.5, overflow: "hidden", height: "100%", display: "flex", flexDirection: "column", transition: "box-shadow 0.15s", "&:hover": { boxShadow: "0 2px 12px rgba(0,0,0,0.07)" } }}>
-                  {/* Thumbnail area */}
+              <Grid size={{ xs: 6, sm: 4, md: 4, lg: 3 }} key={item.id}>
+                <Card
+                  variant="outlined"
+                  sx={{
+                    borderRadius: 3,
+                    overflow: "hidden",
+                    height: "100%",
+                    display: "flex",
+                    flexDirection: "column",
+                    borderColor: "#e5e7eb",
+                    boxShadow: "0 10px 28px rgba(15, 23, 42, 0.07)",
+                    transition: "transform 0.2s, box-shadow 0.2s, border-color 0.2s",
+                    "&:hover": {
+                      transform: "translateY(-3px)",
+                      borderColor: "#bfdbfe",
+                      boxShadow: "0 18px 34px rgba(37, 99, 235, 0.16)",
+                    },
+                  }}
+                >
                   <Box
-                    sx={{ position: "relative", bgcolor: "#f3f4f6", cursor: hasPlay ? "pointer" : "default", "&:hover .ov": { opacity: 1 } }}
+                    sx={{
+                      position: "relative",
+                      bgcolor: "#f3f4f6",
+                      cursor: hasPlay ? "pointer" : "default",
+                      "&:hover .ov": { opacity: 1 },
+                    }}
                     onClick={() => { if (info && hasPlay) { setPv(info); setPvOpen(true); } }}
                   >
                     {hasThumb ? (
-                      <CardMedia component="img" image={info!.thumbnail} alt={title} sx={{ height: 120, objectFit: "cover" }} />
+                      <CardMedia component="img" image={info!.thumbnail} alt={title} sx={{ height: 152, objectFit: "cover" }} />
                     ) : (
-                      <Box sx={{ height: 120, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <Box sx={{ height: 152, display: "flex", alignItems: "center", justifyContent: "center" }}>
                         <Film style={{ width: 32, height: 32, color: "#d1d5db" }} />
                       </Box>
                     )}
+                    <Box
+                      sx={{
+                        position: "absolute",
+                        inset: 0,
+                        background: "linear-gradient(180deg, rgba(0,0,0,0) 36%, rgba(0,0,0,0.72) 100%)",
+                        pointerEvents: "none",
+                      }}
+                    />
+                    <Typography
+                      fontSize={11}
+                      fontWeight={600}
+                      color="white"
+                      noWrap
+                      title={title}
+                      sx={{ position: "absolute", left: 8, right: 8, bottom: 8 }}
+                    >
+                      {title}
+                    </Typography>
                     {info?.durationFormatted && (
-                      <Box sx={{ position: "absolute", bottom: 4, right: 4, bgcolor: "rgba(0,0,0,0.72)", color: "white", fontSize: 10, fontWeight: 700, px: 0.75, py: 0.15, borderRadius: 0.5, lineHeight: 1.5 }}>
+                      <Box
+                        sx={{
+                          position: "absolute",
+                          top: 8,
+                          right: 8,
+                          bgcolor: "rgba(17,24,39,0.82)",
+                          color: "white",
+                          fontSize: 10,
+                          fontWeight: 700,
+                          px: 0.8,
+                          py: 0.25,
+                          borderRadius: 1,
+                          lineHeight: 1.5,
+                        }}
+                      >
                         {info.durationFormatted}
                       </Box>
                     )}
                     {hasPlay && (
-                      <Box className="ov" sx={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", bgcolor: "rgba(0,0,0,0.3)", opacity: 0, transition: "opacity 0.15s" }}>
-                        <Box sx={{ width: 36, height: 36, borderRadius: "50%", bgcolor: "rgba(255,255,255,0.9)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <Box className="ov" sx={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", bgcolor: "rgba(0,0,0,0.36)", opacity: 0, transition: "opacity 0.15s" }}>
+                        <Box sx={{ width: 42, height: 42, borderRadius: "50%", bgcolor: "rgba(255,255,255,0.94)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 8px 22px rgba(0,0,0,0.35)" }}>
                           <Play style={{ width: 18, height: 18, color: "#111", marginLeft: 2 }} />
                         </Box>
                       </Box>
                     )}
                   </Box>
 
-                  {/* Info area */}
-                  <Box sx={{ flex: 1, display: "flex", flexDirection: "column", p: 1, gap: 0.25 }}>
-                    <Typography fontSize={12} fontWeight={600} color="#111827" noWrap title={title}>{title}</Typography>
-                    {info?.owner && <Typography fontSize={10} color="text.secondary" noWrap>{info.owner}</Typography>}
-                    {info?.description && <Typography fontSize={10} color="text.secondary" sx={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", lineHeight: 1.35 }}>{info.description}</Typography>}
+                  <Box sx={{ flex: 1, display: "flex", flexDirection: "column", p: 1.1, gap: 0.55 }}>
+                    {info?.owner && <Typography fontSize={11} color="#374151" noWrap>{info.owner}</Typography>}
+                    {info?.description && (
+                      <Typography
+                        fontSize={10.5}
+                        color="text.secondary"
+                        sx={{
+                          display: "-webkit-box",
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: "vertical",
+                          overflow: "hidden",
+                          lineHeight: 1.35,
+                          minHeight: 28,
+                        }}
+                      >
+                        {info.description}
+                      </Typography>
+                    )}
+                    {info?.dimensions && (
+                      <Chip
+                        label={info.dimensions}
+                        size="small"
+                        sx={{
+                          width: "fit-content",
+                          maxWidth: "100%",
+                          height: 20,
+                          fontSize: 10,
+                          bgcolor: "#f3f4f6",
+                          color: "#4b5563",
+                          borderRadius: 1.2,
+                        }}
+                      />
+                    )}
 
-                    {/* Actions */}
-                    <Box sx={{ mt: "auto", display: "flex", gap: 0.5, pt: 0.75 }}>
+                    <Box sx={{ mt: "auto", display: "flex", gap: 0.5, pt: 0.6 }}>
                       {hasPlay && (
                         <Tooltip title="Play">
-                          <IconButton size="small" onClick={() => { if (info) { setPv(info); setPvOpen(true); } }} sx={{ bgcolor: "#111827", color: "white", width: 26, height: 26, "&:hover": { bgcolor: "#374151" } }}>
+                          <IconButton size="small" onClick={() => { if (info) { setPv(info); setPvOpen(true); } }} sx={{ bgcolor: "#111827", color: "white", width: 28, height: 28, "&:hover": { bgcolor: "#1f2937" } }}>
                             <Play style={{ width: 13, height: 13, marginLeft: 1 }} />
                           </IconButton>
                         </Tooltip>
                       )}
                       {hasDl && (
                         <Tooltip title="Download">
-                          <IconButton size="small" component="a" href={info!.downloadUrl} target="_blank" rel="noopener noreferrer" sx={{ border: "1px solid #e5e7eb", width: 26, height: 26, color: "#374151", "&:hover": { bgcolor: "#f9fafb" } }}>
+                          <IconButton size="small" component="a" href={info!.downloadUrl} target="_blank" rel="noopener noreferrer" sx={{ border: "1px solid #d1d5db", width: 28, height: 28, color: "#374151", "&:hover": { bgcolor: "#f9fafb" } }}>
                             <Download style={{ width: 13, height: 13 }} />
                           </IconButton>
                         </Tooltip>
                       )}
                       <Tooltip title="Remove">
-                        <IconButton size="small" onClick={() => remove(item.video_id)} sx={{ marginLeft: "auto", width: 26, height: 26, color: "#ef4444", border: "1px solid #fecaca", "&:hover": { bgcolor: "#fef2f2" } }}>
+                        <IconButton size="small" onClick={() => remove(item.video_id)} sx={{ marginLeft: "auto", width: 28, height: 28, color: "#ef4444", border: "1px solid #fecaca", "&:hover": { bgcolor: "#fef2f2" } }}>
                           <Trash2 style={{ width: 12, height: 12 }} />
                         </IconButton>
                       </Tooltip>
@@ -262,7 +404,8 @@ export default function PlaylistDetailPage() {
               </Grid>
             );
           })}
-        </Grid>
+          </Grid>
+        </Box>
       )}
 
       <PlayerDialog video={pv} open={pvOpen} onClose={() => setPvOpen(false)} />

@@ -31,10 +31,13 @@ import {
 	CheckCircle,
 	ExternalLink,
 	Info,
+	Loader2,
 } from 'lucide-react';
 import { VideoPlayer } from './video-player';
 import { useAuth } from '@clerk/nextjs';
 import { redirectToSignupPortal } from '@/lib/auth-portal';
+import { AddToPlaylistButton } from './add-to-playlist-button';
+import { getCantoVideoDownloadUrl } from '@/lib/canto-downloads-api';
 
 interface VideoDetailsProps {
 	video: VideoData | null;
@@ -58,6 +61,7 @@ interface VideoData {
 	owner: string;
 	approvalStatus: string;
 	directUrlPreviewPlay: string;
+	playUrl?: string;
 	downloadUrl: string;
 	detailUrl: string;
 	bitRate: string;
@@ -72,11 +76,12 @@ interface VideoData {
 }
 
 export function VideoDetails({ video, onBack }: VideoDetailsProps) {
-	const { isSignedIn, isLoaded } = useAuth();
+	const { isSignedIn, isLoaded, getToken } = useAuth();
 	const [linkCopied, setLinkCopied] = useState(false);
 	const [rawDataCopied, setRawDataCopied] = useState(false);
 	const [activeTab, setActiveTab] = useState('overview');
 	const [watchTime, setWatchTime] = useState(0);
+	const [isDownloading, setIsDownloading] = useState(false);
 
 	const handleCopyLink = () => {
 		navigator.clipboard.writeText(window.location.href);
@@ -94,9 +99,24 @@ export function VideoDetails({ video, onBack }: VideoDetailsProps) {
 		}
 	};
 
-	const handleDownload = () => {
-		if (video?.downloadUrl) {
-			window.open(video.downloadUrl, '_blank');
+	const handleDownload = async () => {
+		if (!video || isDownloading) return;
+
+		try {
+			setIsDownloading(true);
+			const token = await getToken();
+			if (!token) {
+				throw new Error('Session expired. Please sign in again.');
+			}
+			const downloadUrl = await getCantoVideoDownloadUrl(token, video.id, {
+				sourceScope: 'detail',
+			});
+			window.open(downloadUrl, '_blank', 'noopener,noreferrer');
+		} catch (error) {
+			console.error('Failed to download video', error);
+			alert('Could not start the download.');
+		} finally {
+			setIsDownloading(false);
 		}
 	};
 
@@ -240,11 +260,19 @@ export function VideoDetails({ video, onBack }: VideoDetailsProps) {
 									<Button
 										variant='outline'
 										onClick={handleDownload}
-										disabled={!video.downloadUrl}
+										disabled={isDownloading}
 									>
-										<Download className='h-4 w-4 mr-2' />
-										Download
+										{isDownloading ? (
+											<Loader2 className='h-4 w-4 mr-2 animate-spin' />
+										) : (
+											<Download className='h-4 w-4 mr-2' />
+										)}
+										{isDownloading ? 'Preparing...' : 'Download'}
 									</Button>
+									<AddToPlaylistButton
+										videoId={video.id}
+										videoTitle={video.title}
+									/>
 
 									<Button variant='outline' onClick={handleCopyLink}>
 										{linkCopied ? (
@@ -269,41 +297,18 @@ export function VideoDetails({ video, onBack }: VideoDetailsProps) {
 									)}
 								</>
 							) : (
-								<div className='relative w-full'>
-									{/* Blurred background buttons */}
-									<div className='flex flex-wrap gap-3 blur-sm pointer-events-none opacity-50'>
-										<Button variant='outline' disabled>
-											<Download className='h-4 w-4 mr-2' />
-											Download
+								<div className='w-full rounded-lg border border-dashed p-4'>
+									<div className='text-center'>
+										<p className='text-sm font-medium mb-3'>
+											Create your BVIRAL account to unlock downloads and playlists.
+										</p>
+										<Button
+											variant='default'
+											onClick={redirectToSignupPortal}
+											className='whitespace-nowrap'
+										>
+											Sign Up
 										</Button>
-
-										<Button variant='outline' disabled>
-											<Share className='h-4 w-4 mr-2' />
-											Share
-										</Button>
-
-										{video.detailUrl && (
-											<Button variant='outline' disabled>
-												<ExternalLink className='h-4 w-4 mr-2' />
-												View Original
-											</Button>
-										)}
-									</div>
-
-									{/* Sign up overlay */}
-									<div className='absolute inset-0 flex items-center justify-center bg-background/80 rounded-lg'>
-										<div className='text-center p-4'>
-											<p className='text-sm font-medium mb-3'>
-												Create your BVIRAL account to download and share
-											</p>
-											<Button
-												variant='default'
-												onClick={redirectToSignupPortal}
-												className='whitespace-nowrap'
-											>
-												Sign Up
-											</Button>
-										</div>
 									</div>
 								</div>
 							)}

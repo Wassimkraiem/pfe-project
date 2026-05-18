@@ -7,6 +7,9 @@ const isPublicRoute = createRouteMatcher([
 	'/search',
 	'/categories',
 	'/video(.*)',
+	'/api/videos(.*)',
+	'/api/chat(.*)',
+	'/api/transcribe(.*)',
 ]);
 export default clerkMiddleware(async (auth, req) => {
 	if (!isPublicRoute(req)) {

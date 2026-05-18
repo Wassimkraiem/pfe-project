@@ -1,0 +1,30 @@
+{
+  "queries": [
+    {
+      "id": "q1",
+      "query": "funny animal clips",
+      "k": 20,
+      "filters": {
+        "categories": ["Animals"]
+      },
+      "relevant": [
+        {"video_id": "REPLACE_WITH_REAL_VIDEO_ID_1", "grade": 3},
+        {"video_id": "REPLACE_WITH_REAL_VIDEO_ID_2", "grade": 2}
+      ]
+    },
+    {
+      "id": "q2",
+      "query": "top sports highlights",
+      "k": 20,
+      "filters": {
+        "categories": ["Sports"],
+        "sort_by": "views",
+        "sort_order": "desc"
+      },
+      "relevant": [
+        {"video_id": "REPLACE_WITH_REAL_VIDEO_ID_3", "grade": 3},
+        {"video_id": "REPLACE_WITH_REAL_VIDEO_ID_4", "grade": 2}
+      ]
+    }
+  ]
+}

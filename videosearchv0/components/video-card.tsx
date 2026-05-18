@@ -4,10 +4,14 @@ import { useState, useRef, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Clock, Eye, Download, Volume2, VolumeX } from 'lucide-react';
+import { Clock, Eye, Download, Heart, Loader2, Volume2, VolumeX } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useCategories } from '@/app/context/CategoriesContext';
+import { AddToPlaylistButton } from '@/components/add-to-playlist-button';
+import { useAuth } from '@clerk/nextjs';
+import { getCantoVideoDownloadUrl } from '@/lib/canto-downloads-api';
+import { addFavorite, removeFavorite } from '@/lib/favorites-api';
+import { ingestRecommendationClickEvent } from '@/lib/recommendations-api';
 
 interface Video {
 	id: string;
@@ -25,17 +29,22 @@ interface Video {
 
 interface VideoCardProps {
 	video: Video;
+	onOpen?: (video: Video) => void;
+	initialIsFavorited?: boolean;
 }
 
-export function VideoCard({ video }: VideoCardProps) {
+export function VideoCard({ video, onOpen, initialIsFavorited = false }: VideoCardProps) {
+	const { isLoaded, isSignedIn, getToken } = useAuth();
 	const [isHovered, setIsHovered] = useState(false);
+	const [isFavorited, setIsFavorited] = useState(initialIsFavorited);
+	const [isFavoriting, setIsFavoriting] = useState(false);
 	const [isPlaying, setIsPlaying] = useState(false);
 	const [isMuted, setIsMuted] = useState(true);
 	const [showVideo, setShowVideo] = useState(false);
 	const [videoLoaded, setVideoLoaded] = useState(false);
+	const [isDownloading, setIsDownloading] = useState(false);
 	const videoRef = useRef<HTMLVideoElement>(null);
 	const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-	const { categories } = useCategories();
 
 	// Preview settings
 	const PREVIEW_START_TIME = 0; // Start from beginning (you can change this)
@@ -98,50 +107,38 @@ export function VideoCard({ video }: VideoCardProps) {
 		}
 	};
 
-	// Play video when it's shown and ready
+	// Play video when it's shown and ready.
+	// With preload='none' the browser never starts loading until play() is called,
+	// so readyState is always 0 and a canplay listener alone never fires.
+	// Solution: call play() immediately — it triggers the load; canplay updates UI.
 	useEffect(() => {
-		if (showVideo && videoRef.current && video.directUrlPreviewPlay) {
-			const videoElement = videoRef.current;
+		if (!showVideo || !videoRef.current || !video.directUrlPreviewPlay) return;
 
-			const handleLoadedData = () => {
-				setVideoLoaded(true);
-			};
+		const videoElement = videoRef.current;
 
-			const handleTimeUpdate = () => {
-				// Stop preview after the specified duration
-				if (videoElement.currentTime >= PREVIEW_START_TIME + PREVIEW_DURATION) {
-					videoElement.currentTime = PREVIEW_START_TIME;
-				}
-			};
-
-			const playVideo = async () => {
-				try {
-					videoElement.muted = isMuted;
-					videoElement.currentTime = PREVIEW_START_TIME;
-					await videoElement.play();
-					setIsPlaying(true);
-				} catch (error) {
-					console.log('Failed to play preview video:', error);
-				}
-			};
-
-			videoElement.addEventListener('loadeddata', handleLoadedData);
-			videoElement.addEventListener('timeupdate', handleTimeUpdate);
-
-			// Wait for video to load before playing
-			if (videoElement.readyState >= 2) {
-				handleLoadedData();
-				playVideo();
-			} else {
-				videoElement.addEventListener('canplay', playVideo, { once: true });
+		const handleCanPlay = () => setVideoLoaded(true);
+		const handleTimeUpdate = () => {
+			if (videoElement.currentTime >= PREVIEW_START_TIME + PREVIEW_DURATION) {
+				videoElement.currentTime = PREVIEW_START_TIME;
 			}
+		};
 
-			return () => {
-				videoElement.removeEventListener('loadeddata', handleLoadedData);
-				videoElement.removeEventListener('timeupdate', handleTimeUpdate);
-			};
-		}
-	}, [showVideo, isMuted, video.directUrlPreviewPlay]);
+		videoElement.addEventListener('canplay', handleCanPlay);
+		videoElement.addEventListener('timeupdate', handleTimeUpdate);
+		videoElement.muted = isMuted;
+
+		videoElement.play().then(() => {
+			setIsPlaying(true);
+		}).catch(() => {
+			// Autoplay blocked or component unmounted before play resolved
+		});
+
+		return () => {
+			videoElement.removeEventListener('canplay', handleCanPlay);
+			videoElement.removeEventListener('timeupdate', handleTimeUpdate);
+		};
+	// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [showVideo]);
 
 	// Cleanup timeout on unmount
 	useEffect(() => {
@@ -152,13 +149,74 @@ export function VideoCard({ video }: VideoCardProps) {
 		};
 	}, []);
 
+	const handleFavoriteToggle = async (e: React.MouseEvent) => {
+		e.preventDefault();
+		e.stopPropagation();
+		if (isFavoriting || !isLoaded || !isSignedIn) return;
+
+		const next = !isFavorited;
+		setIsFavorited(next);
+		setIsFavoriting(true);
+		try {
+			const token = await getToken();
+			if (!token) throw new Error('Not authenticated');
+			if (next) {
+				await addFavorite(token, {
+					video_id: video.id,
+					video_title: video.title,
+					thumbnail_url: video.thumbnail,
+				});
+				ingestRecommendationClickEvent(token, {
+					video_id: video.id,
+					event_type: 'favorite',
+					event_context: { source: 'video_card' },
+				}).catch(() => {});
+			} else {
+				await removeFavorite(token, video.id);
+			}
+		} catch {
+			setIsFavorited(!next);
+		} finally {
+			setIsFavoriting(false);
+		}
+	};
+
+	const handleDownload = async (e: React.MouseEvent) => {
+		e.preventDefault();
+		e.stopPropagation();
+
+		if (isDownloading) return;
+
+		try {
+			setIsDownloading(true);
+			const token = await getToken();
+			if (!token) {
+				throw new Error('Session expired. Please sign in again.');
+			}
+			const downloadUrl = await getCantoVideoDownloadUrl(token, video.id, {
+				sourceScope: 'browse',
+			});
+			window.open(downloadUrl, '_blank', 'noopener,noreferrer');
+		} catch (error) {
+			console.error('Failed to download video', error);
+			alert('Could not start the download.');
+		} finally {
+			setIsDownloading(false);
+		}
+	};
+
 	return (
 		<div
 			onMouseEnter={handleMouseEnter}
 			onMouseLeave={handleMouseLeave}
 			className='relative'
 		>
-			<Link href={`/video/${video.id}`}>
+			<Link
+				href={`/video/${video.id}`}
+				onClick={() => {
+					onOpen?.(video);
+				}}
+			>
 				<Card className='group overflow-hidden hover:shadow-lg transition-all duration-300'>
 					<div className='relative aspect-video overflow-hidden'>
 						{/* Thumbnail Image */}
@@ -230,6 +288,32 @@ export function VideoCard({ video }: VideoCardProps) {
 							{video.category}
 						</Badge>
 
+						{/* Favorite Button — top-right of thumbnail */}
+						{isLoaded && isSignedIn && (
+							<button
+								onClick={handleFavoriteToggle}
+								disabled={isFavoriting}
+								title={isFavorited ? 'Remove from favorites' : 'Add to favorites'}
+								className={`group/fav absolute top-2 right-2 z-20 p-1.5 rounded-full transition-all duration-200 focus:outline-none
+									${isFavorited
+										? 'bg-rose-500/90 opacity-100'
+										: 'bg-black/50 opacity-0 group-hover:opacity-100 hover:bg-black/70'
+									}`}
+							>
+								{isFavoriting ? (
+									<Loader2 className='h-3.5 w-3.5 animate-spin text-white' />
+								) : (
+									<Heart
+										className={`h-3.5 w-3.5 transition-colors
+											${isFavorited
+												? 'fill-white text-white'
+												: 'text-white group-hover/fav:fill-rose-400 group-hover/fav:text-rose-400'
+											}`}
+									/>
+								)}
+							</button>
+						)}
+
 						{/* Preview Indicator */}
 						{video.directUrlPreviewPlay && showVideo && !videoLoaded && (
 							<div className='absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white/80 text-xs bg-black/60 px-2 py-1 rounded'>
@@ -271,17 +355,36 @@ export function VideoCard({ video }: VideoCardProps) {
 								</span>
 								<span>{formatDate(video.uploadDate)}</span>
 							</div>
-							<Button
-								size='sm'
-								variant='ghost'
-								onClick={(e) => {
-									e.preventDefault();
-									e.stopPropagation();
-									// Handle download logic here
-								}}
-							>
-								<Download className='h-4 w-4' />
-							</Button>
+						{isLoaded && isSignedIn && (
+							<div className='flex items-center gap-1'>
+								<div
+									onClick={(e) => {
+										e.preventDefault();
+										e.stopPropagation();
+									}}
+								>
+									<AddToPlaylistButton
+										videoId={video.id}
+										videoTitle={video.title}
+										size='sm'
+										variant='ghost'
+										className='px-2'
+									/>
+								</div>
+								<Button
+									size='sm'
+									variant='ghost'
+									onClick={handleDownload}
+									disabled={isDownloading}
+								>
+									{isDownloading ? (
+										<Loader2 className='h-4 w-4 animate-spin' />
+									) : (
+										<Download className='h-4 w-4' />
+									)}
+								</Button>
+							</div>
+						)}
 						</div>
 					</CardContent>
 				</Card>

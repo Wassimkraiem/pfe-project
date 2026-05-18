@@ -1,0 +1,167 @@
+\chapter*{Webography}
+\markboth{Webography}{Webography}
+\addcontentsline{toc}{chapter}{Webography}
+\label{chap:webographie}
+\pagestyle{empty}
+
+The following web resources were consulted while writing this report, especially for presenting
+the host organization, analyzing existing solutions, describing the technologies and tools used,
+and documenting design and architecture choices.
+
+\begin{enumerate}[leftmargin=0pt]
+
+  \item \label{web:bviral} \textbf{BVIRAL Media Inc.} :
+        \url{https://www.bviral.com/} (Accessed on January 15, 2026).\\
+        Official website used to present the host organization and describe the viral video
+        content licensing business model (Chapter~1, Section~1.1).
+
+  \item \label{web:getty} \textbf{Getty Images} :
+        \url{https://www.gettyimages.com/} (Accessed on January 20, 2026).\\
+        Platform analyzed in the comparative study of existing video rights management and semantic
+        search solutions (Chapter~1, Section~1.3).
+
+  \item \label{web:storyful} \textbf{Storyful} :
+        \url{https://storyful.com/} (Accessed on January 20, 2026).\\
+        Social media monitoring platform analyzed as part of the state-of-the-art review, with a
+        focus on manual licensing workflows (Chapter~1, Section~1.3).
+
+  \item \label{web:jukin} \textbf{Jukin Media} :
+        \url{https://www.jukinmedia.com/} (Accessed on January 21, 2026).\\
+        Curated subscription-based video catalog solution analyzed in the comparative study
+        (Chapter~1, Section~1.3).
+
+  \item \label{web:shutterstock} \textbf{Shutterstock Video} :
+        \url{https://www.shutterstock.com/video} (Accessed on January 21, 2026).\\
+        International platform with semantic and filtered search analyzed for feature comparison
+        (Chapter~1, Section~1.3).
+
+  \item \label{web:scrumorg} \textbf{Scrum.org --- The Scrum Guide} :
+        \url{https://www.scrum.org/resources/scrum-guide} (Accessed on January 25, 2026).\\
+        Main reference for describing the Agile Scrum methodology and sprint process used in the
+        project (Chapter~1, Section~1.4).
+
+  \item \label{web:fastapi} \textbf{FastAPI} :
+        \url{https://fastapi.tiangolo.com} (Accessed on February 1, 2026).\\
+        Python framework used for AR-API and Agentic Helper.
+
+  \item \label{web:flask} \textbf{Flask} :
+        \url{https://flask.palletsprojects.com} (Accessed on February 1, 2026).\\
+        Python framework used for the Videos Search API.
+
+  \item \label{web:nextjs} \textbf{Next.js} :
+        \url{https://nextjs.org/docs} (Accessed on February 2, 2026).\\
+        React framework used for both portals and BFF routes (Chapters~2 and~7).
+
+  \item \label{web:sqlalchemy} \textbf{SQLAlchemy} :
+        \url{https://docs.sqlalchemy.org} (Accessed on February 3, 2026).\\
+        Async Python ORM used for PostgreSQL access in FastAPI services.
+
+  \item \label{web:alembic} \textbf{Alembic} :
+        \url{https://alembic.sqlalchemy.org} (Accessed on February 3, 2026).\\
+        Database migration tool used for AR-API schema evolution.
+
+  \item \label{web:pydantic} \textbf{Pydantic} :
+        \url{https://docs.pydantic.dev} (Accessed on February 4, 2026).\\
+        Data validation library used for strict schemas and structured LLM outputs.
+
+  \item \label{web:celery} \textbf{Celery} :
+        \url{https://docs.celeryq.dev} (Accessed on February 5, 2026).\\
+        Distributed task queue used for notifications and background processing.
+
+  \item \label{web:radixui} \textbf{Radix UI} :
+        \url{https://www.radix-ui.com} (Accessed on February 6, 2026).\\
+        UI primitives used with Tailwind CSS in the Video Search Portal.
+
+  \item \label{web:mui} \textbf{Material UI (MUI)} :
+        \url{https://mui.com/material-ui/} (Accessed on February 6, 2026).\\
+        UI component library used for dashboards and admin interfaces.
+
+  \item \label{web:tailwind} \textbf{Tailwind CSS} :
+        \url{https://tailwindcss.com/docs} (Accessed on February 6, 2026).\\
+        Utility-first CSS framework used in the Video Search Portal.
+
+  \item \label{web:langchain} \textbf{LangChain} :
+        \url{https://python.langchain.com/docs/} (Accessed on February 10, 2026).\\
+        LLM orchestration framework used for prompt chains and RAG.
+
+  \item \label{web:langgraph} \textbf{LangGraph} :
+        \url{https://langchain-ai.github.io/langgraph/} (Accessed on February 10, 2026).\\
+        State-graph framework used for the video search ReAct agent.
+
+  \item \label{web:langsmith} \textbf{LangSmith} :
+        \url{https://smith.langchain.com/} (Accessed on February 11, 2026).\\
+        Tracing and prompt management platform for Agentic Helper.
+
+  \item \label{web:openai} \textbf{OpenAI API} :
+        \url{https://platform.openai.com/docs/} (Accessed on February 12, 2026).\\
+        API used for GPT models, embeddings, and Whisper transcription.
+
+  \item \label{web:qdrant} \textbf{Qdrant} :
+        \url{https://qdrant.tech/documentation/} (Accessed on February 14, 2026).\\
+        Vector database used to store and retrieve semantic embeddings.
+
+  \item \label{web:opensearch} \textbf{OpenSearch} :
+        \url{https://opensearch.org/docs/} (Accessed on February 15, 2026).\\
+        Search engine used for lexical, vector, and faceted video search.
+
+  \item \label{web:clerk} \textbf{Clerk} :
+        \url{https://clerk.com/docs} (Accessed on February 18, 2026).\\
+        Authentication and user management service used across portals and AR-API.
+
+  \item \label{web:stripe} \textbf{Stripe} :
+        \url{https://stripe.com/docs} (Accessed on February 19, 2026).\\
+        Payment platform used for checkout, subscriptions, and billing flows.
+
+  \item \label{web:slack_api} \textbf{Slack Block Kit} :
+        \url{https://api.slack.com/block-kit} (Accessed on February 20, 2026).\\
+        Slack API used for structured notifications in backend workflows.
+
+  \item \label{web:redis} \textbf{Redis} :
+        \url{https://redis.io/docs/} (Accessed on February 22, 2026).\\
+        In-memory data store used as Celery broker and state cache.
+
+  \item \label{web:postgresql} \textbf{PostgreSQL} :
+        \url{https://www.postgresql.org/docs/} (Accessed on February 22, 2026).\\
+        Relational database used for core AR-API domain data.
+
+  \item \label{web:docker} \textbf{Docker} :
+        \url{https://docs.docker.com/} (Accessed on February 25, 2026).\\
+        Containerization platform used to package services.
+
+  \item \label{web:dockercompose} \textbf{Docker Compose} :
+        \url{https://docs.docker.com/compose/} (Accessed on February 25, 2026).\\
+        Local orchestration tool used to run the full stack.
+
+  \item \label{web:python} \textbf{Python} :
+        \url{https://docs.python.org/3/} (Accessed on March 2, 2026).\\
+        Main backend language used in AR-API, Agentic Helper, and Videos Search API.
+
+  \item \label{web:typescript} \textbf{TypeScript} :
+        \url{https://www.typescriptlang.org/docs/} (Accessed on March 2, 2026).\\
+        Main frontend language used in both Next.js portals.
+
+  \item \label{web:postman} \textbf{Postman} :
+        \url{https://www.postman.com/product/api-client/} (Accessed on March 4, 2026).\\
+        API client used to test backend endpoints.
+
+  \item \label{web:cursor} \textbf{Cursor IDE} :
+        \url{https://www.cursor.com/} (Accessed on March 4, 2026).\\
+        Primary AI-assisted code editor used during development.
+
+  \item \label{web:vscode} \textbf{Visual Studio Code} :
+        \url{https://code.visualstudio.com/docs} (Accessed on March 5, 2026).\\
+        Secondary code editor used alongside Cursor IDE.
+
+  \item \label{web:qdrant_cloud_console} \textbf{Qdrant Cloud Console} :
+        \url{https://cloud.qdrant.io/} (Accessed on March 6, 2026).\\
+        Web interface used to inspect and manage vector collections.
+
+  \item \label{web:opensearch_dashboards} \textbf{OpenSearch Dashboards} :
+        \url{https://opensearch.org/docs/latest/dashboards/} (Accessed on March 6, 2026).\\
+        Visualization interface used to inspect OpenSearch indexes and queries.
+
+  \item \label{web:pytest} \textbf{pytest} :
+        \url{https://docs.pytest.org/} (Accessed on March 8, 2026).\\
+        Python testing framework used for backend test suites.
+
+\end{enumerate}

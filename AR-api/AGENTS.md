@@ -26,6 +26,8 @@ Each module follows: `router.py` → `services.py` → `model.py`
 - `GET /users/me`
 - `GET /users/me/overview`
 - `POST /canto/basic-group/remove` (testing, no auth)
+- `GET /canto/videos/{video_id}/download` (returns signed Canto download URL + records download event)
+- `GET /library/downloads` (current user's paginated download history)
 - `GET /channels`
 - `GET /channels/{channel_id}`
 - `POST /channels/{channel_id}`
@@ -40,6 +42,7 @@ Each module follows: `router.py` → `services.py` → `model.py`
 | `user/` | User profiles and management; `GET /users/me/overview` returns `{ user, payment, channels }` for the authenticated user |
 | `channel/` | Channel/platform connections |
 | `payment/` | Stripe subscriptions & webhooks (`Stripe-Signature` required); `GET /payments/me` returns payment details plus the Stripe customer portal URL for the authenticated user; `GET /payments/prices/{price_id}` returns `{ price, plan }` from Stripe (`plan` is `monthly`/`yearly`/`enterprise`) |
+| `recommendation/` | Personalized recommendation events + feed (`POST /recommendations/events/search`, `POST /recommendations/events/click`, `GET /recommendations`) with profile signals stored in Postgres and candidate retrieval delegated to videos-search-api advanced-search |
 | `onboarding_session/` | User onboarding flow |
 | `custom_quote/` | Custom quote from onboarding session; `POST /custom-quotes/create` takes email only, fetches channels from onboarding session |
 | `email/` | MJML email templates |
@@ -188,6 +191,14 @@ Each module follows: `router.py` → `services.py` → `model.py`
 - Migrations: `alembic upgrade head`
 - Session: use `get_async_session` dependency
 - Alembic `env.py` must import all model modules (including `app.payment`) so autogenerate sees full metadata.
+- Canto download tracking schema:
+  - `downloaded_videos` table stores `user_id`, `video_id`, `video_title`, optional `thumbnail_url`, `source_scope`, `request_filters` (`JSONB`), and `downloaded_at`.
+  - Enum type `cantodownloadsourcescope` currently supports `browse` and `detail`.
+  - Added by migration `20260506_downloaded_videos`.
+- Recommendation tables: `user_search_events`, `user_video_events`, `user_interest_profiles` are part of ORM metadata and must remain imported by Alembic env.
+- Recommendation response `seed` includes `resolved_entities` (video-id signals enriched to title/categories/tags). Raw video IDs are not used as text `query_terms` for retrieval.
+- Recommendation seed prioritizes recent `user_search_events` from DB (latest queries + parsed intent) and only falls back to profile aggregates, reducing stale/random recommendations.
+- Recommendation ranking applies anti-repetition controls: suppression of recently seen/clicked/playlist videos, freshness bonus, category diversity cap, deterministic daily rotation, and a small exploration slice.
 - Feature package `__init__.py` files should import ORM models (e.g., `app.payment.__init__` imports `PaymentModel`) so Alembic autogenerate sees tables.
 
 ## Commands
@@ -198,6 +209,10 @@ docker-compose -f docker-compose.local.yml up
 # New migration
 alembic revision --autogenerate -m "description"
 ```
+
+## Architecture Diagrams
+- Recommendation use-case: `docs/recommendation-system-usecase.mmd`
+- Search use-case: `docs/search-system-usecase.mmd`
 
 ## CI/CD
 - Bitbucket pipeline (`bitbucket-pipelines.yml`) runs on push to `main` or `staging`. Builds Docker image and pushes to ECR via `atlassian/aws-ecr-push-image` pipe (no OIDC).

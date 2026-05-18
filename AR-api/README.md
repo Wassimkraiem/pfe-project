@@ -198,6 +198,11 @@ Raw OpenAPI JSON schema:
 
 **🔗 http://localhost:8000/openapi.json**
 
+### Architecture Diagrams
+
+- Recommendation system use-case diagram: `docs/recommendation-system-usecase.mmd`
+- Search system use-case diagram: `docs/search-system-usecase.mmd`
+
 ## Project Structure
 
 ```

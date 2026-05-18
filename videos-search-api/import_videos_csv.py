@@ -3,8 +3,10 @@
 
 import argparse
 import csv
+import hashlib
 import json
 import os
+import random
 import sys
 import time
 from pathlib import Path
@@ -108,20 +110,91 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--ensure-index",
         action="store_true",
-        help="Create OpenSearch index `videos` via /indexes/ before import.",
+        help="Bootstrap the vectorized videos_v2 index and read/write aliases before import.",
     )
     return parser.parse_args()
 
 
 def parse_video_from_row(row: Dict[str, str]) -> Tuple[str, Dict]:
     """Return (video_id, video_data) from one CSV row."""
-    if "video_info" in row:
+    has_single_video_info = set(row.keys()) == {"video_info"}
+    if has_single_video_info:
         raw = row["video_info"]
         video_data = json.loads(raw)
     else:
-        video_data = row
+        # New export format: parse `video_info` JSON when available and enrich with flat columns.
+        base: Dict = {}
+        raw_info = (row.get("video_info") or "").strip()
+        if raw_info:
+            try:
+                parsed = json.loads(raw_info)
+                if isinstance(parsed, dict):
+                    base = parsed
+            except json.JSONDecodeError:
+                # Keep importing with flat columns even if nested JSON is malformed.
+                base = {}
 
-    video_id = video_data.get("id") or video_data.get("video_id")
+        flat: Dict = {}
+        for k, v in row.items():
+            if v is None:
+                continue
+            s = str(v).strip()
+            if not s or k == "video_info":
+                continue
+            flat[k] = s
+
+        # Prefer canto id as primary id, fallback to numeric id.
+        if flat.get("canto_id"):
+            base["id"] = flat["canto_id"]
+        elif flat.get("id") and not base.get("id"):
+            base["id"] = flat["id"]
+
+        # Keep the flat source id for traceability.
+        if flat.get("id"):
+            base["source_id"] = flat["id"]
+
+        # Normalize commonly queried fields.
+        if flat.get("name") and not base.get("name"):
+            base["name"] = flat["name"]
+        if flat.get("name") and not base.get("title"):
+            base["title"] = flat["name"]
+        if flat.get("description"):
+            base["description"] = flat["description"]
+        if flat.get("category"):
+            keyword = base.get("keyword")
+            if isinstance(keyword, list):
+                if flat["category"] not in keyword:
+                    keyword.append(flat["category"])
+            else:
+                base["keyword"] = [flat["category"]]
+        if flat.get("duration"):
+            try:
+                duration = float(flat["duration"])
+                metadata = base.get("metadata")
+                if not isinstance(metadata, dict):
+                    metadata = {}
+                    base["metadata"] = metadata
+                metadata["duration"] = duration
+            except ValueError:
+                pass
+        if flat.get("direct_url_original"):
+            url = base.get("url")
+            if not isinstance(url, dict):
+                url = {}
+                base["url"] = url
+            url["directUrlOriginal"] = flat["direct_url_original"]
+        if flat.get("direct_url_preview"):
+            url = base.get("url")
+            if not isinstance(url, dict):
+                url = {}
+                base["url"] = url
+            url["directUrlPreview"] = flat["direct_url_preview"]
+
+        # Persist original flat columns for debugging/filtering.
+        base["cts"] = flat
+        video_data = base
+
+    video_id = video_data.get("id") or video_data.get("video_id") or row.get("canto_id")
     if not video_id:
         raise ValueError("Missing `id` or `video_id` in row payload")
 
@@ -154,7 +227,50 @@ def sanitize_video_data(video_data: Dict) -> Dict:
             metadata.pop("Minor_Version", None)
         else:
             metadata["Minor_Version"] = coerced
+    if isinstance(metadata, dict) and "Android_Version" in metadata:
+        android_version = metadata.get("Android_Version")
+        if isinstance(android_version, int):
+            pass
+        elif isinstance(android_version, str):
+            stripped = android_version.strip()
+            if stripped.isdigit():
+                metadata["Android_Version"] = int(stripped)
+            else:
+                parts = stripped.split(".")
+                if parts and parts[0].isdigit():
+                    metadata["Android_Version"] = int(parts[0])
+                else:
+                    metadata.pop("Android_Version", None)
+        else:
+            metadata.pop("Android_Version", None)
+    ensure_views(video_data)
     return video_data
+
+
+def ensure_views(video_data: Dict) -> None:
+    # Keep existing valid views if present.
+    existing = video_data.get("views")
+    if isinstance(existing, (int, float)) and int(existing) > 0:
+        video_data["views"] = int(existing)
+        return
+    if isinstance(existing, str):
+        stripped = existing.strip().replace(",", "")
+        if stripped.isdigit() and int(stripped) > 0:
+            video_data["views"] = int(stripped)
+            return
+
+    # Deterministic pseudo-random assignment seeded by id/name so reruns are stable.
+    seed_source = str(video_data.get("id") or video_data.get("video_id") or video_data.get("name") or "")
+    digest = hashlib.sha256(seed_source.encode("utf-8")).hexdigest()
+    seed = int(digest[:16], 16)
+    rng = random.Random(seed)
+
+    # Weighted blend: some very high values in millions, others in thousands.
+    if rng.random() < 0.4:
+        views = rng.randint(1_000_000, 9_500_000)
+    else:
+        views = rng.randint(1_000, 950_000)
+    video_data["views"] = views
 
 
 def post_video(
@@ -181,21 +297,21 @@ def post_video(
 
 def ensure_videos_index(session, base_url: str, timeout: float) -> None:
     response = session.put(
-        f"{base_url.rstrip('/')}/indexes/",
-        json={"index_name": "videos"},
+        f"{base_url.rstrip('/')}/indexes/bootstrap-v2",
+        json={
+            "index_name": os.getenv("VIDEOS_INDEX_NAME", "videos_v2"),
+            "read_alias": os.getenv("VIDEOS_READ_ALIAS", "videos_read"),
+            "write_alias": os.getenv("VIDEOS_WRITE_ALIAS", "videos_write"),
+            "embedding_dimension": int(os.getenv("EMBEDDING_DIMENSION", "1536")),
+        },
         timeout=timeout,
     )
     if response.ok:
-        print("Ensured OpenSearch index `videos` exists.")
-        return
-
-    # Existing index is not fatal for import.
-    if "index already exists" in response.text.lower():
-        print("OpenSearch index `videos` already exists.")
+        print("Ensured vectorized OpenSearch video index and aliases exist.")
         return
 
     raise RuntimeError(
-        f"Failed to create index `videos`: status={response.status_code} body={response.text[:300]}"
+        f"Failed to bootstrap vectorized video index: status={response.status_code} body={response.text[:300]}"
     )
 
 

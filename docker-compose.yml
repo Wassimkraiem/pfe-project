@@ -151,12 +151,23 @@ services:
       - opensearch-node1
       - opensearch-node2
 
+  videos-redis:
+    image: redis:7-alpine
+    container_name: videos-redis
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   videos-search-api:
     build:
       context: ./videos-search-api
       dockerfile: Dockerfile
     container_name: videos-search-api
     working_dir: /sev
+    env_file:
+      - ./videos-search-api/.env
     environment:
       FLASK_RUN_RELOAD: "1"
       PYTHONUNBUFFERED: "1"
@@ -169,31 +180,34 @@ services:
       OPENSEARCH_INITIAL_ADMIN_PASSWORD: admin
       SENTRY_DSN: ""
       API_KEYS: key1
+      REDIS_URL: redis://videos-redis:6379/0
+      SEARCH_CACHE_TTL: "300"
+      SEARCH_CACHE_ENABLED: "true"
+      DISABLE_EMBEDDINGS: "false"
+      EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-openai}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-text-embedding-3-small}
+      EMBEDDING_DIMENSION: ${EMBEDDING_DIMENSION:-1536}
+      VIDEOS_READ_ALIAS: ${VIDEOS_READ_ALIAS:-videos_read}
+      VIDEOS_WRITE_ALIAS: ${VIDEOS_WRITE_ALIAS:-videos_write}
+      ADVANCED_SEARCH_OPENAI_RERANK_MODE: ${ADVANCED_SEARCH_OPENAI_RERANK_MODE:-last_resort}
+      OPENAI_RERANK_TIMEOUT_SECONDS: ${OPENAI_RERANK_TIMEOUT_SECONDS:-2}
+      ADVANCED_SEARCH_OPENAI_RERANK_WEAK_GAP: ${ADVANCED_SEARCH_OPENAI_RERANK_WEAK_GAP:-0.015}
+      ADVANCED_SEARCH_OPENAI_RERANK_WEAK_HEURISTIC: ${ADVANCED_SEARCH_OPENAI_RERANK_WEAK_HEURISTIC:-0.10}
+      ADVANCED_SEARCH_RERANK_TOP_N: ${ADVANCED_SEARCH_RERANK_TOP_N:-30}
+      ADVANCED_SEARCH_TOP_RANK_BONUS: ${ADVANCED_SEARCH_TOP_RANK_BONUS:-0.05}
+      ADVANCED_SEARCH_TOP_RANK_2_3_BONUS: ${ADVANCED_SEARCH_TOP_RANK_2_3_BONUS:-0.02}
     command: flask run --debug --host=0.0.0.0 --port 5000
     volumes:
       - ./videos-search-api:/sev
     depends_on:
-      - opensearch-node1
-      - opensearch-node2
+      opensearch-node1:
+        condition: service_started
+      opensearch-node2:
+        condition: service_started
+      videos-redis:
+        condition: service_healthy
     ports:
       - "5000:5000"
-
-  agentic-helper-db:
-    image: pgvector/pgvector:pg16
-    container_name: agentic-helper-db
-    environment:
-      POSTGRES_DB: agentic_helper
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-    volumes:
-      - agentic_helper_pgdata:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d agentic_helper"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
 
   agentic-helper-api:
     build:
@@ -204,16 +218,16 @@ services:
     env_file:
       - ./agentic-helper/.env
     environment:
-      DATABASE_URL: postgresql+asyncpg://postgres:postgres@agentic-helper-db:5432/agentic_helper
       VIDEOS_SEARCH_API_URL: http://videos-search-api:5000
       VIDEOS_SEARCH_API_FALLBACK_URLS: http://videos-search-api:5000,http://host.docker.internal:5000
       FRONTEND_SEARCH_URL: http://localhost:3002/search
     command: uvicorn app.main:app --host 0.0.0.0 --port 8003 --reload --reload-dir /app/app
     volumes:
       - ./agentic-helper:/app
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
     depends_on:
-      agentic-helper-db:
-        condition: service_healthy
       videos-search-api:
         condition: service_started
     ports:
@@ -276,7 +290,6 @@ volumes:
   ar_postgres_data:
   opensearch_data1:
   opensearch_data2:
-  agentic_helper_pgdata:
   auth_portal_node_modules:
   auth_portal_next:
   videosearch_node_modules:

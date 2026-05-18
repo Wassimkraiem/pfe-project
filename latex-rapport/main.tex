@@ -1,0 +1,202 @@
+\documentclass[12pt,a4paper,oneside]{report}
+
+%% ─── Packages ────────────────────────────────────────────────────────────────
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[english,french]{babel}
+\usepackage{lmodern}
+\usepackage{microtype}
+
+%% Layout
+\usepackage[top=2.5cm,bottom=2.5cm,left=3cm,right=2.5cm]{geometry}
+\usepackage{setspace}
+\onehalfspacing
+
+%% Graphics & Colors
+\usepackage{graphicx}
+\usepackage[table,xcdraw]{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{shapes,arrows,arrows.meta,positioning,fit,calc,backgrounds,shadows.blur,shapes.symbols,shapes.geometric}
+
+%% Tables
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{multirow}
+\usepackage{tabularx}
+
+%% Code listings
+\usepackage{listings}
+\usepackage{minted}
+
+%% Math
+\usepackage{amsmath}
+\usepackage{amssymb}
+
+%% Hyperlinks
+\usepackage[colorlinks=true,
+            linkcolor=blue!70!black,
+            citecolor=green!50!black,
+            urlcolor=blue!70!black]{hyperref}
+
+%% Bibliography
+\usepackage[backend=biber,style=ieee,sorting=none]{biblatex}
+\addbibresource{bibliography/references.bib}
+
+%% Headers & Footers
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\leftmark}
+\fancyhead[R]{\small BVIRAL Platform}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+%% Chapter style
+\usepackage{titlesec}
+\titleformat{\chapter}[display]
+  {\normalfont\huge\bfseries\color{blue!70!black}}
+  {\chaptertitlename\ \thechapter}{20pt}{\Huge}
+\titlespacing*{\chapter}{0pt}{50pt}{40pt}
+
+%% Miscellaneous
+\usepackage{enumitem}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{pdfpages}
+\usepackage{acronym}
+\usepackage{csquotes}
+\usepackage{mdframed}
+
+%% Color definitions
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.97,0.97,0.97}
+\definecolor{bviralblue}{RGB}{0,82,155}
+\definecolor{bvirallightblue}{RGB}{0,153,255}
+
+%% Listings style
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{backcolour},
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{blue}\bfseries,
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,
+    breaklines=true,
+    captionpos=b,
+    keepspaces=true,
+    numbers=left,
+    numbersep=5pt,
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    tabsize=2,
+    frame=single,
+    rulecolor=\color{codegray}
+}
+\lstset{style=mystyle}
+
+%% ─── Sequence Diagram Helpers ─────────────────────────────────────────────
+%% Participant box styles (color-coded by service role)
+\tikzset{
+  sdFE/.style={draw=blue!60!black, fill=blue!10, rounded corners=3pt,
+    minimum width=2.1cm, minimum height=0.58cm,
+    font=\fontsize{7.5}{9}\selectfont\bfseries, align=center, text=blue!25!black},
+  sdBE/.style={draw=teal!70!black, fill=teal!10, rounded corners=3pt,
+    minimum width=2.1cm, minimum height=0.58cm,
+    font=\fontsize{7.5}{9}\selectfont\bfseries, align=center, text=teal!25!black},
+  sdExt/.style={draw=gray!60, fill=gray!8, rounded corners=3pt,
+    minimum width=2.1cm, minimum height=0.58cm,
+    font=\fontsize{7.5}{9}\selectfont\bfseries, align=center},
+  sdData/.style={draw=violet!70, fill=violet!8, rounded corners=3pt,
+    minimum width=2.1cm, minimum height=0.58cm,
+    font=\fontsize{7.5}{9}\selectfont\bfseries, align=center, text=violet!30!black},
+  sdWork/.style={draw=orange!70!black, fill=orange!8, rounded corners=3pt,
+    minimum width=2.1cm, minimum height=0.58cm,
+    font=\fontsize{7.5}{9}\selectfont\bfseries, align=center},
+  %% Message arrows
+  sdmsg/.style={->, >=Stealth, thick},
+  sdret/.style={->, >=Stealth, semithick, dashed, gray!65},
+  %% Note box (yellow sticky)
+  sdnote/.style={draw=orange!60!black, fill=yellow!12, rounded corners=2pt,
+    font=\fontsize{6.5}{8}\selectfont, align=center, inner sep=3pt},
+  %% Fragment box label
+  sdfrag/.style={draw=gray!50, fill=gray!4, rounded corners=2pt,
+    font=\fontsize{7}{8}\selectfont\itshape, inner sep=2pt},
+}
+
+%% ─── Use-Case Diagram Helpers ──────────────────────────────────────────────
+\tikzset{
+  ucboundary/.style={draw=gray!55, fill=gray!4, rounded corners=6pt,
+    dashed, thick},
+  usecase/.style={draw=blue!55!black, fill=blue!8, ellipse,
+    font=\fontsize{8}{9}\selectfont, align=center,
+    minimum width=2.9cm, minimum height=0.68cm},
+  ucassoc/.style={thick, gray!60},
+  ucincl/.style={->, >=Stealth, dashed, gray!55,
+    font=\fontsize{6.5}{7}\selectfont\itshape},
+}
+
+%% UML stick-figure actor: \umlactor{x}{y}{label}
+\newcommand{\umlactor}[3]{%
+  \begin{scope}[shift={(#1,#2)}]
+    \draw[thick] (0,0.30) circle (0.17cm);
+    \draw[thick] (0,0.13) -- (0,-0.20);
+    \draw[thick] (-0.22,0.03) -- (0.22,0.03);
+    \draw[thick] (0,-0.20) -- (-0.17,-0.52);
+    \draw[thick] (0,-0.20) -- (0.17,-0.52);
+    \node[font=\fontsize{8}{9}\selectfont, align=center, text width=1.8cm]
+      at (0,-0.73) {#3};
+  \end{scope}
+}
+
+%% ─── Document ────────────────────────────────────────────────────────────────
+\begin{document}
+
+%% Title page
+\include{chapters/00_titlepage}
+
+%% Front matter
+\pagenumbering{roman}
+\include{chapters/02_dedication}
+\include{chapters/03_acknowledgements}
+\include{chapters/01_abstract}
+
+%% Table of contents
+\cleardoublepage
+\tableofcontents
+
+%% List of tables
+\cleardoublepage
+\addcontentsline{toc}{chapter}{\listtablename}
+\listoftables
+
+%% List of figures
+\cleardoublepage
+\addcontentsline{toc}{chapter}{\listfigurename}
+\listoffigures
+
+\include{chapters/04_acronyms}
+\cleardoublepage
+
+%% Main matter
+\pagenumbering{arabic}
+\include{chapters/05_introduction}
+\include{chapters/06_chapter1_context}
+\include{chapters/07_chapter2_requirements}
+\include{chapters/08_chapter3_architecture}
+\include{chapters/09_chapter4_implementation}
+\include{chapters/10_chapter5_ai_components}
+\include{chapters/11_chapter6_results}
+\include{chapters/12_chapter7_sprint5_agent}
+\include{chapters/14_chapter9_sprint7_personalization}
+\include{chapters/12_conclusion}
+
+%% Back matter
+\include{chapters/15_webographie}
+
+\end{document}

@@ -14,9 +14,12 @@ import app.onboarding_session  # noqa: F401
 import app.channel  # noqa: F401
 import app.email  # noqa: F401
 import app.payment  # noqa: F401
+import app.canto  # noqa: F401
 import app.conversation  # noqa: F401
 import app.playlist  # noqa: F401
+import app.recommendation  # noqa: F401
 import app.video_submission  # noqa: F401
+import app.favorites  # noqa: F401
 
 
 config = context.config  # type: ignore[attr-defined]

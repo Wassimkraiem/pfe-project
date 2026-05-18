@@ -6,6 +6,15 @@ import { UserButton, useAuth, useUser } from "@clerk/nextjs";
 import DashboardSidebar from "@/components/DashboardSidebar";
 import { Box, CircularProgress, Typography } from "@mui/material";
 
+const adminPaths = [
+  "/dashboard/custom-quotes",
+  "/dashboard/quotes-status",
+  "/dashboard/admin-videos",
+  "/dashboard/admin-conversations",
+  "/dashboard/admin-chatbot",
+  "/dashboard/admin-faqs",
+];
+
 export default function DashboardLayout({
   children,
 }: {
@@ -19,14 +28,11 @@ export default function DashboardLayout({
     const metadata = user?.publicMetadata as Record<string, unknown> | undefined;
     return metadata?.role === "admin" || metadata?.isAdmin === true;
   })();
-
-  const adminPaths = ["/dashboard/custom-quotes", "/dashboard/quotes-status"];
   useEffect(() => {
     if (!isLoaded || !isSignedIn || !isAdmin) return;
     if (!adminPaths.includes(pathname)) {
       router.replace("/dashboard/custom-quotes");
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAdmin, isLoaded, isSignedIn, pathname, router]);
 
   // Show loader until auth state is known; prevent flashing dashboard content when logged out

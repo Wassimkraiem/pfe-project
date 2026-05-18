@@ -1,0 +1,253 @@
+\chapter{Sprint 4 — Agentic Helper: RAG and Classifier Pipeline}
+
+\section*{Introduction}
+\addcontentsline{toc}{section}{Introduction}
+
+Sprint 4 delivers the backbone of the Agentic Helper: a \textbf{Retrieval-Augmented Generation
+(RAG)} layer on top of \texttt{Qdrant}, a two-level \textbf{classifier pipeline} that routes
+every chat message, a \textbf{prompt management} structure with LangSmith support, and a
+sliding-window \textbf{conversation memory}. This sprint provides the grounded, cost-aware chat
+experience that later sprints will extend with the ReAct agent, voice transcription, and FAQ
+vector administration.
+
+%% ─── Sprint Backlog ─────────────────────────────────────────────────────────
+\section{Sprint Backlog}
+
+\begin{table}[H]
+\centering
+\caption{Sprint 4 Backlog}
+\label{tab:sprint4_backlog}
+\begin{tabularx}{\textwidth}{clXcc}
+\toprule
+\textbf{ID} & \textbf{Story} & \textbf{Task} & \textbf{Effort (d)} & \textbf{Prio.} \\
+\midrule
+T4.1 & US-11 & Agentic Helper FastAPI scaffolding with API key + user-id headers & 0.5 & M \\
+T4.2 & US-12 & Qdrant collection for \texttt{knowledge\_chunks}-style payloads & 0.5 & M \\
+T4.3 & US-12 & JSON and Excel ingestion endpoints with semantic chunking           & 1 & M \\
+T4.4 & US-12 & Qdrant cosine similarity retrieval query                            & 0.5 & M \\
+T4.5 & US-11 & Mode classifier LLM (default / video\_search)                       & 1 & M \\
+T4.6 & US-12 & RAG classifier LLM (need\_rag / direct)                             & 0.5 & M \\
+T4.8 & US-11 & Prompt files and three-layer prompt structure                      & 0.5 & M \\
+T4.9 & US-11 & Sliding-window memory for conversation history                     & 0.5 & M \\
+T4.10 & US-11 & Embed AI chatbot widget in both portals                           & 1 & M \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+%% ─── Design ─────────────────────────────────────────────────────────────────
+\section{Design}
+
+\subsection{Use Case Diagram for Sprint 4}
+
+Sprint 4 refines the \emph{AI chat assistant} and \emph{AI support chat} use cases of the global
+use-case diagram (Figure~\ref{fig:uc_global}) with the internal branching shown in
+Figure~\ref{fig:uc_chat}.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[x=1cm, y=1cm]
+\draw[ucboundary, minimum width=9.6cm, minimum height=8cm]
+  (-4.8, -5) rectangle (4.8, 3);
+\node[font=\small\bfseries, text=gray!60!black] at (0, 3.3) {AI Chat Experience};
+
+\node[usecase] (uc_msg)   at (0,  2.2) {Send chat message};
+\node[usecase] (uc_rag)   at (-3, 0.4) {RAG grounded answer};
+\node[usecase] (uc_agent) at ( 3, 0.4) {Invoke video-search agent};
+\node[usecase] (uc_hist)  at (0, -1.4) {View conversation history};
+
+\draw[ucincl] (uc_msg)   -- node[left, pos=0.5]{\guillemotleft include\guillemotright}  (uc_rag);
+\draw[ucincl] (uc_msg)   -- node[right, pos=0.5]{\guillemotleft include\guillemotright} (uc_agent);
+\draw[ucassoc] (uc_msg.south) to[bend right=8] (uc_hist.north);
+
+%% Actors
+\umlactor{-6.5}{1.5}{User};
+\umlactor{ 6.5}{1.5}{OpenAI};
+\draw[ucassoc] (-5.9, 1.6) -- (uc_msg);
+\draw[ucassoc] ( 5.9, 1.6) -- (uc_rag);
+\draw[ucassoc] ( 5.9, 1.2) -- (uc_agent);
+\end{tikzpicture}
+\caption{AI chat use-case diagram (Sprint 4 scope)}
+\label{fig:uc_chat}
+\end{figure}
+
+\subsection{Class Diagram for Sprint 4}
+
+Sprint 4 owns the Agentic Helper knowledge layer: an external Qdrant collection for stored FAQ
+chunks, a payload index on \texttt{source} for source-level replacement, and an in-memory
+sliding history used to keep recent conversational context without requiring a relational chatbot
+database. The full schema is summarized in Chapter~2, Section~2.8.
+
+\subsection{Sequence Diagram: Qdrant Retrieval}
+
+Figure~\ref{fig:seq_vectorsearch} isolates the RAG retrieval path used by the chat pipeline when
+the RAG classifier decides that the knowledge base must be consulted.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[x=1cm, y=1cm, font=\fontsize{7}{8}\selectfont]
+\node[sdFE]   (pUser)  at ( 0.0, 0) {User};
+\node[sdBE]   (pChat)  at ( 2.8, 0) {Chat API};
+\node[sdExt]  (pClf)   at ( 5.6, 0) {RAG Classifier\\LLM};
+\node[sdExt]  (pEmb)   at ( 8.4, 0) {Embedding\\API};
+\node[sdData] (pPG)    at (11.2, 0) {Qdrant};
+\node[sdExt]  (pAns)   at (14.0, 0) {Answer\\LLM};
+
+\foreach \x in {0.0, 2.8, 5.6, 8.4, 11.2, 14.0}
+  \draw[dashed, gray!50] (\x,-0.3) -- (\x,-10.5);
+
+\draw[sdmsg] (0.0,-0.85) -- node[above, pos=0.5]{question} (2.8,-0.85);
+\draw[sdmsg] (2.8,-1.57) -- node[above, pos=0.5]{RAG classify?} (5.6,-1.57);
+\draw[sdret] (5.6,-2.29) -- node[above, pos=0.5]{need\_rag = true} (2.8,-2.29);
+\draw[sdmsg] (2.8,-3.01) -- node[above, pos=0.5]{embed(query)} (8.4,-3.01);
+\draw[sdret] (8.4,-3.73) -- node[above, pos=0.5]{query embedding} (2.8,-3.73);
+\draw[sdmsg] (2.8,-4.45) -- node[above, pos=0.5]{query dense vector + top\_k} (11.2,-4.45);
+\draw[sdret] (11.2,-5.17)-- node[above, pos=0.5]{top-k chunks + similarity} (2.8,-5.17);
+\draw[sdmsg] (2.8,-5.89) to[out=-30,in=30] node[right, pos=0.5]{format context block} (2.8,-6.61);
+\draw[sdmsg] (2.8,-7.33) -- node[above, pos=0.5]{answer prompt(history, question, context)} (14.0,-7.33);
+\draw[sdret] (14.0,-8.05)-- node[above, pos=0.5]{grounded answer} (2.8,-8.05);
+\draw[sdret] (2.8,-8.77) -- node[above, pos=0.5]{ChatResponse} (0.0,-8.77);
+
+\node[sdnote] at (13.4,-5.35) {Cosine distance\\on 1536-dim\\embeddings};
+\draw[->, dashed, gray!50] (11.2,-5.17) -- (12.4,-5.35);
+
+\end{tikzpicture}
+\caption{Qdrant RAG retrieval sequence}
+\label{fig:seq_vectorsearch}
+\end{figure}
+
+%% ─── Implementation ────────────────────────────────────────────────────────
+\section{Implementation}
+
+\subsection{Agentic Helper Entry Point}
+
+The Agentic Helper exposes a single \texttt{POST /api/v1/chat} endpoint. Every message passes
+through an explicit router that decides how the request should be handled before retrieval,
+search, or answer generation starts.
+
+\subsection{Retrieval-Augmented Generation (RAG)}
+
+\subsubsection{Knowledge Ingestion Pipeline}
+
+Documents enter the knowledge base through two endpoints:
+
+\begin{enumerate}
+  \item \texttt{POST /api/v1/rag/ingest} — Accepts a JSON array of \texttt{\{source, text\}}
+    objects. The \texttt{replace\_source} flag purges existing chunks for that source before
+    re-ingesting.
+  \item \texttt{POST /api/v1/rag/ingest-excel} — Accepts an \texttt{.xlsx} file and maps
+    \texttt{question} + \texttt{answer} columns to text chunks via \textbf{openpyxl}.
+\end{enumerate}
+
+Each chunk is processed in three steps:
+\begin{enumerate}
+  \item Split using semantic chunking (configurable \texttt{RAG\_CHUNK\_SIZE} and
+    \texttt{RAG\_CHUNK\_OVERLAP}).
+  \item Embedded with \textbf{OpenAI text-embedding-3-small} (1536 dimensions).
+  \item Stored in the external \textbf{Qdrant} collection with \texttt{source},
+    \texttt{content}, \texttt{metadata\_json}, and a dense vector payload.
+\end{enumerate}
+
+\subsubsection{Retrieval at Query Time}
+
+When the RAG classifier determines that retrieval is needed:
+
+\begin{enumerate}
+  \item The user message is embedded with the same model.
+  \item A \textbf{cosine similarity} query runs against the Qdrant dense-vector index:
+\end{enumerate}
+
+\begin{lstlisting}[language=python, caption={Qdrant cosine similarity retrieval}]
+result = await qdrant_client.query_points(
+    collection_name=settings.qdrant_collection_name,
+    query=query_vector,
+    using=vector_name,
+    limit=settings.rag_top_k,
+    with_payload=True,
+    with_vectors=False,
+)
+\end{lstlisting}
+
+\begin{enumerate}
+  \setcounter{enumi}{2}
+  \item The top-$k$ chunks are formatted into a context block and injected into the LLM prompt.
+  \item The response is grounded in retrieved content, which reduces hallucination on FAQ-type
+    support questions.
+\end{enumerate}
+
+\subsection{Two-Level Classification Pipeline}
+
+The classifier pipeline has two levels:
+
+\begin{enumerate}
+  \item \textbf{Mode Classifier} — Decides between general support (\texttt{default}) and
+    video discovery (\texttt{video\_search}).
+  \item \textbf{RAG Classifier} (default mode only) — Decides whether the knowledge base needs
+    querying or a direct LLM response is enough.
+\end{enumerate}
+
+Classifiers use \textbf{GPT-4o-mini} (temperature 0) for deterministic, low-cost decisions.
+The answer model uses the full \textbf{GPT-4o} only when generating a response. This
+dual-model approach cuts classification cost by roughly $10\times$ with no measurable drop in
+routing accuracy.
+
+\subsection{Prompt Engineering and Management}
+
+Prompt resolution follows a three-level fallback chain:
+\begin{enumerate}
+  \item LangSmith prompt identifiers when configured.
+  \item Versioned prompt files under \texttt{data/prompts/}.
+  \item Inline environment-variable fallbacks for emergency overrides.
+\end{enumerate}
+
+This structure allowed the project to keep prompts versioned in code while adding remote
+experimentation and tracing through LangSmith without changing the API surface.
+
+All prompts are \textbf{versioned text files} in \texttt{data/prompts/}:
+
+\begin{table}[H]
+\centering
+\caption{Prompt files in the Agentic Helper}
+\begin{tabular}{ll}
+\toprule
+\textbf{File} & \textbf{Purpose} \\
+\midrule
+\texttt{bviral\_system\_prompt.txt}                   & Main chatbot system policy \\
+\texttt{video\_search\_system\_prompt.txt}             & ReAct agent system prompt \\
+\texttt{video\_search\_filter\_extractor\_prompt.txt} & Filter extraction prompt \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Each prompt uses a three-layer structure:
+\begin{enumerate}
+  \item \textbf{System policy}: tone, safety guardrails, domain scope.
+  \item \textbf{Mode branch}: style and tone adapted to the active routing mode.
+  \item \textbf{Task context}: current intent and any retrieved knowledge chunks.
+\end{enumerate}
+
+\subsection{Memory Management}
+
+Conversation memory uses a \textbf{sliding window}:
+\begin{itemize}
+  \item The last $N$ turns are fetched from \texttt{chat\_messages}
+    (\texttt{CHATBOT\_MEMORY\_WINDOW} env var, default: 10).
+  \item History is serialized as plain text (\texttt{user: \ldots} / \texttt{assistant: \ldots}).
+  \item For Sprint 5, the same history window is reused by the structured router, the RAG
+    answer chain, and the video-search planner.
+\end{itemize}
+
+\subsection{Delivered Interfaces}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.55\textwidth]{\detokenize{figures/videosearch/chatbot screenshot question.png}}
+\caption{Embedded AI chatbot — grounded support answer via RAG}
+\label{fig:screen_chat_rag}
+\end{figure}
+
+\section*{Conclusion}
+\addcontentsline{toc}{section}{Conclusion}
+
+Sprint 4 produced the RAG knowledge base, the two-level classification pipeline, versioned
+prompts, and the sliding-window conversation memory. This is the foundation on top of which the
+Sprint 5 structured router, deterministic search planner, and optional ReAct fallback are built.

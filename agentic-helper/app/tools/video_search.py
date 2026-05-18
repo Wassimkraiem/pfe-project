@@ -46,10 +46,20 @@ def _extract_video_summary(doc: dict) -> dict:
     video_id = doc.get("video_id", "")
 
     rms = doc.get("rms", {})
-    data = rms.get("data", {}) if isinstance(rms, dict) else {}
+    cts = doc.get("cts", {})
+    rms_data = rms.get("data", {}) if isinstance(rms, dict) else {}
+    cts_data = cts.get("data", {}) if isinstance(cts, dict) else {}
+    data = rms_data if isinstance(rms_data, dict) and rms_data else cts_data
     additional = data.get("additional", {})
     metadata = data.get("metadata", {})
     default = data.get("default", {})
+
+    views = data.get("views")
+    if not isinstance(views, (int, float)):
+        views = 0
+    created_value = data.get("created")
+    if not isinstance(created_value, (int, float)):
+        created_value = 0
 
     return {
         "video_id": video_id,
@@ -57,12 +67,32 @@ def _extract_video_summary(doc: dict) -> dict:
         "description": (data.get("description") or additional.get("Description", ""))[:300],
         "tags": data.get("tag", []),
         "keywords": data.get("keyword", []),
+        "views": int(views),
         "duration": metadata.get("RDuration"),
         "resolution": default.get("Dimensions", ""),
         "orientation": metadata.get("Orientation", ""),
+        "created": int(created_value),
         "owner": data.get("ownerName", ""),
         "thumbnail": data.get("url", {}).get("directUrlPreview", "") if isinstance(data.get("url"), dict) else "",
     }
+
+
+def _sort_videos(videos: list[dict], sort_by: str, sort_order: str) -> list[dict]:
+    reverse = sort_order != "asc"
+
+    if sort_by == "views":
+        return sorted(videos, key=lambda v: int(v.get("views") or 0), reverse=reverse)
+    if sort_by == "duration":
+        return sorted(
+            videos,
+            key=lambda v: float(v.get("duration") or 0),
+            reverse=reverse,
+        )
+    if sort_by == "newest":
+        return sorted(videos, key=lambda v: int(v.get("created") or 0), reverse=True)
+    if sort_by == "oldest":
+        return sorted(videos, key=lambda v: int(v.get("created") or 0), reverse=False)
+    return videos
 
 
 async def _request_with_fallback(
@@ -117,6 +147,8 @@ async def _request_with_fallback(
 async def search_videos_semantic(
     query: str,
     k: int = 10,
+    sort_by: str = "relevance",
+    sort_order: str = "desc",
     categories: Optional[list[str]] = None,
     tags: Optional[list[str]] = None,
     duration_min: Optional[float] = None,
@@ -133,6 +165,8 @@ async def search_videos_semantic(
     Args:
         query: Natural-language search query describing the desired videos.
         k: Maximum number of results to return (default 10).
+        sort_by: Sort mode after retrieval: relevance, views, duration, newest, oldest.
+        sort_order: Sort direction: desc (default) or asc.
         categories: Optional list of category keywords to filter by.
         tags: Optional list of tags to filter by.
         duration_min: Optional minimum duration in seconds.
@@ -164,7 +198,17 @@ async def search_videos_semantic(
     data = body.get("data", body)
     raw_docs = data.get("documents", []) if isinstance(data, dict) else []
     videos = [_extract_video_summary(d) for d in raw_docs if isinstance(d, dict)]
-    return json.dumps({"videos": videos, "total": len(videos), "query": query}, ensure_ascii=False)
+    videos = _sort_videos(videos, sort_by=sort_by, sort_order=sort_order)
+    return json.dumps(
+        {
+            "videos": videos,
+            "total": len(videos),
+            "query": query,
+            "sort_by": sort_by,
+            "sort_order": sort_order,
+        },
+        ensure_ascii=False,
+    )
 
 
 @tool

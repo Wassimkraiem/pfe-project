@@ -21,3 +21,10 @@ class IndexSchema(Schema):
 
 class ExpectedIndexSchema(Schema):
     index_name = fields.Str(required=True)
+
+
+class BootstrapVideosV2Schema(Schema):
+    index_name = fields.Str(load_default="videos_v2")
+    read_alias = fields.Str(load_default="videos_read")
+    write_alias = fields.Str(load_default="videos_write")
+    embedding_dimension = fields.Int(load_default=1536)

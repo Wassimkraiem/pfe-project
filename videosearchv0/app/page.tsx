@@ -5,6 +5,7 @@ import { LatestVideos } from '@/components/latest-videos';
 import { Hero } from '@/components/hero';
 import { SignupSpotlight } from '@/components/signup-spotlight';
 import { BviralLandingClone } from '@/components/bviral-landing-clone';
+import { RecommendationsSection } from '@/components/recommendations-section';
 import { useCategories } from './context/CategoriesContext';
 import { useAuth } from '@clerk/nextjs';
 
@@ -18,6 +19,8 @@ export default function HomePage() {
 			<Hero />
 
 			<main className='container mx-auto px-4 py-8 md:py-10 space-y-10'>
+				<RecommendationsSection />
+
 				{/* Categories Section */}
 				<section id='categories-section' className='space-y-8'>
 					<div className='text-center space-y-4'>

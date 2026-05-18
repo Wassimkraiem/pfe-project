@@ -1,0 +1,110 @@
+% $ biblatex auxiliary file $
+% $ biblatex bbl format version 3.2 $
+% Do not modify the above lines!
+%
+% This is an auxiliary file used by the 'biblatex' package.
+% This file may safely be deleted. It will be recreated by
+% biber as required.
+%
+\begingroup
+\makeatletter
+\@ifundefined{ver@biblatex.sty}
+  {\@latex@error
+     {Missing 'biblatex' package}
+     {The bibliography requires the 'biblatex' package.}
+      \aftergroup\endinput}
+  {}
+\endgroup
+
+
+\refsection{0}
+  \datalist[entry]{none/global//global/global}
+    \entry{crag_2024}{misc}{}
+      \name{author}{4}{}{%
+        {{hash=731e6291cc95e1f0c93882858d726783}{%
+           family={Yan},
+           familyi={Y\bibinitperiod},
+           given={Shi-Qi},
+           giveni={S\bibinithyphendelim Q\bibinitperiod}}}%
+        {{hash=0f7620068f3fe278ef4417545b3f57a0}{%
+           family={Gu},
+           familyi={G\bibinitperiod},
+           given={Jia-Chen},
+           giveni={J\bibinithyphendelim C\bibinitperiod}}}%
+        {{hash=7fa0e36c9ae1432b9d97b1bb39222e10}{%
+           family={Zhu},
+           familyi={Z\bibinitperiod},
+           given={Yun},
+           giveni={Y\bibinitperiod}}}%
+        {{hash=6141208900447ed2b4f6d8bea7eae834}{%
+           family={Ling},
+           familyi={L\bibinitperiod},
+           given={Zhen-Hua},
+           giveni={Z\bibinithyphendelim H\bibinitperiod}}}%
+      }
+      \strng{namehash}{9990155a98431aa6077f2f7dc5522c9b}
+      \strng{fullhash}{7e878d437241d60c59f4ac7f4710a1ba}
+      \strng{bibnamehash}{7e878d437241d60c59f4ac7f4710a1ba}
+      \strng{authorbibnamehash}{7e878d437241d60c59f4ac7f4710a1ba}
+      \strng{authornamehash}{9990155a98431aa6077f2f7dc5522c9b}
+      \strng{authorfullhash}{7e878d437241d60c59f4ac7f4710a1ba}
+      \field{sortinit}{1}
+      \field{sortinithash}{4f6aaa89bab872aa0999fec09ff8e98a}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{eprinttype}{arXiv}
+      \field{title}{Corrective Retrieval Augmented Generation}
+      \field{year}{2024}
+      \verb{eprint}
+      \verb 2401.15884
+      \endverb
+    \endentry
+    \entry{query_rewriting_rag}{misc}{}
+      \name{author}{5}{}{%
+        {{hash=7c8b2bbaca43ace3e1264c2e37a6ff1d}{%
+           family={Ma},
+           familyi={M\bibinitperiod},
+           given={Xinbei},
+           giveni={X\bibinitperiod}}}%
+        {{hash=4c8c3c2c62a5ae659566b8e8ce0ea3b2}{%
+           family={Gong},
+           familyi={G\bibinitperiod},
+           given={Yeyun},
+           giveni={Y\bibinitperiod}}}%
+        {{hash=c53e3e860dbeebd073b0651c1f711567}{%
+           family={He},
+           familyi={H\bibinitperiod},
+           given={Pengcheng},
+           giveni={P\bibinitperiod}}}%
+        {{hash=83dfa007c00ea6000ab8745d0b697520}{%
+           family={Zhao},
+           familyi={Z\bibinitperiod},
+           given={Hai},
+           giveni={H\bibinitperiod}}}%
+        {{hash=d487976fc92039fa50b07a190b1f5e49}{%
+           family={Duan},
+           familyi={D\bibinitperiod},
+           given={Nan},
+           giveni={N\bibinitperiod}}}%
+      }
+      \strng{namehash}{237f5898ea8e2505294090be9616dc32}
+      \strng{fullhash}{3ae7bad3f984d86acb1c450774f0f7b6}
+      \strng{bibnamehash}{3ae7bad3f984d86acb1c450774f0f7b6}
+      \strng{authorbibnamehash}{3ae7bad3f984d86acb1c450774f0f7b6}
+      \strng{authornamehash}{237f5898ea8e2505294090be9616dc32}
+      \strng{authorfullhash}{3ae7bad3f984d86acb1c450774f0f7b6}
+      \field{sortinit}{2}
+      \field{sortinithash}{8b555b3791beccb63322c22f3320aa9a}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{eprinttype}{arXiv}
+      \field{title}{Query Rewriting for Retrieval-Augmented Large Language Models}
+      \field{year}{2023}
+      \verb{eprint}
+      \verb 2305.14283
+      \endverb
+    \endentry
+  \enddatalist
+\endrefsection
+\endinput
+

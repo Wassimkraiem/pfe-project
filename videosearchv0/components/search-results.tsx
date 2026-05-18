@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { memo, useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { VideoCard } from '@/components/video-card';
 import { Button } from '@/components/ui/button';
@@ -24,6 +24,11 @@ import {
 import axios from 'axios';
 import { formatVideoData } from './../lib/utils';
 import { useCategories } from '@/app/context/CategoriesContext';
+import { useAuth } from '@clerk/nextjs';
+import {
+	ingestRecommendationClickEvent,
+	ingestRecommendationSearchEvent,
+} from '@/lib/recommendations-api';
 
 interface SearchResultsProps {
 	query: string;
@@ -48,18 +53,29 @@ interface FacetData {
 
 const RESULTS_PER_PAGE = 30;
 
-export function SearchResults({ query, category, count }: SearchResultsProps) {
+export const SearchResults = memo(function SearchResults({
+	query,
+	category,
+	count,
+}: SearchResultsProps) {
 	const { categories } = useCategories();
+	const { isLoaded, isSignedIn, getToken } = useAuth();
 	const router = useRouter();
 	const pathname = usePathname();
 	const searchParams = useSearchParams();
+	const searchEventKeyRef = useRef('');
+	const fetchAbortRef = useRef<AbortController | null>(null);
 
 	const [currentPage, setCurrentPage] = useState(1);
 	const [sortBy, setSortBy] = useState('relevance');
 	const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 	const [videos, setVideos] = useState<any[]>([]);
+	const [totalResults, setTotalResults] = useState(0);
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState('');
+	const [execution, setExecution] = useState<Record<string, number> | null>(
+		null
+	);
 
 	// Facets data from API
 	const [facetsData, setFacetsData] = useState<FacetData>({
@@ -222,8 +238,13 @@ export function SearchResults({ query, category, count }: SearchResultsProps) {
 			params.set('page', currentPage.toString());
 		}
 
-		// Update URL without reload
-		const newURL = `${pathname}?${params.toString()}`;
+		const nextQuery = params.toString();
+		const currentQuery = searchParams.toString();
+		const newURL = nextQuery ? `${pathname}?${nextQuery}` : pathname;
+		const currentURL = currentQuery ? `${pathname}?${currentQuery}` : pathname;
+		if (newURL === currentURL) return;
+
+		// Update URL without reload only when there is an actual diff.
 		router.replace(newURL, { scroll: false });
 	}, [
 		query,
@@ -240,6 +261,7 @@ export function SearchResults({ query, category, count }: SearchResultsProps) {
 		currentPage,
 		pathname,
 		router,
+		searchParams,
 	]);
 
 	// Update URL when filters change
@@ -313,98 +335,217 @@ export function SearchResults({ query, category, count }: SearchResultsProps) {
 		}
 	};
 
-	const fetchVideos = async () => {
+	const fetchVideos = async (pageOverride?: number) => {
 		setLoading(true);
 		setError('');
 		try {
-			const requestPayload: any = {};
+			fetchAbortRef.current?.abort();
+			const controller = new AbortController();
+			fetchAbortRef.current = controller;
 
-			// Only add query if it exists
-			if (query) {
-				requestPayload.query = query;
-			} else {
-				requestPayload.query = '';
-			}
+			const filtersPayload: Record<string, any> = {};
 
-			// Add filters only if they have values
 			if (selectedCategories.length > 0) {
-				requestPayload.categories = selectedCategories;
+				filtersPayload.categories = selectedCategories;
 			}
 			if (selectedTags.length > 0) {
-				requestPayload.tags = selectedTags;
+				filtersPayload.tags = selectedTags;
 			}
-			// Duration filter as min/max seconds - only apply if different from full range
 			if (
 				durationRange[0] > durationLimits.min ||
 				durationRange[1] < durationLimits.max
 			) {
-				requestPayload.duration_min = durationRange[0];
-				requestPayload.duration_max = durationRange[1];
+				filtersPayload.duration_min = durationRange[0];
+				filtersPayload.duration_max = durationRange[1];
 			}
-
-			// Date range filter - Convert to YYYYMMDDHHmmssSSS format
 			if (selectedDateRange.start) {
-				requestPayload.created_date_start = convertDateToCustomFormat(
+				filtersPayload.created_date_start = convertDateToCustomFormat(
 					selectedDateRange.start,
 					false
 				);
 			}
 			if (selectedDateRange.end) {
-				requestPayload.created_date_end = convertDateToCustomFormat(
+				filtersPayload.created_date_end = convertDateToCustomFormat(
 					selectedDateRange.end,
 					true
 				);
 			}
-
 			if (selectedLocation.length > 0) {
-				requestPayload.locations = selectedLocation;
+				filtersPayload.locations = selectedLocation;
 			}
 			if (selectedResolution.length > 0) {
-				requestPayload.resolutions = selectedResolution;
+				filtersPayload.resolutions = selectedResolution;
 			}
 			if (selectedOrientation.length > 0) {
-				requestPayload.orientation = selectedOrientation;
+				filtersPayload.orientation = selectedOrientation;
 			}
 
-			let endpoint = 'http://localhost:5000/api/videos/vsearch';
+			// The advanced-search API understands: relevance | newest | oldest | views | duration.
+			// The legacy UI option "popular" maps to the server's "views" sort.
+			const serverSortBy = sortBy === 'popular' ? 'views' : sortBy;
+			const page = pageOverride ?? currentPage;
 
-			// Set k based on context
-			if (query) {
-				// Text search query - semantic search
-				requestPayload.k = 10;
-			} else {
-				// Filtering only - get all matching results
-				requestPayload.k = 1000;
-			}
+			const requestPayload = {
+				query: query || '',
+				filters: filtersPayload,
+				sort: {
+					by: serverSortBy,
+					order: serverSortBy === 'oldest' ? 'asc' : 'desc',
+				},
+				pagination: {
+					offset: (page - 1) * RESULTS_PER_PAGE,
+					limit: RESULTS_PER_PAGE,
+				},
+			};
 
-			console.log('Request payload:', requestPayload); // Debug log
+			const res = await axios.post(
+				'/api/videos/advanced-search',
+				requestPayload,
+				{
+					headers: { 'Content-Type': 'application/json' },
+					signal: controller.signal,
+				}
+			);
 
-			const res = await axios.post(endpoint, requestPayload, {
-				headers: { 'x-api-key': 'key1', 'Content-Type': 'application/json' },
-			});
+			const payload = res.data?.data || {};
+			const items = Array.isArray(payload.items) ? payload.items : [];
 
-			let videoData = res.data?.data?.documents || [];
-			if (!Array.isArray(videoData)) videoData = [videoData];
+			// The advanced-search API returns [{video_id, document, scores}, ...].
+			// Feed `document` into formatVideoData to reuse existing UI shapes.
+			const formattedVideos = items
+				.map((item: any) =>
+					formatVideoData({
+						...(item?.document || {}),
+						video_id: item?.video_id || item?.document?.video_id,
+					})
+				)
+				.filter(Boolean);
 
-			const formattedVideos = videoData.map(formatVideoData).filter(Boolean);
 			setVideos(formattedVideos);
+			setTotalResults(
+				typeof payload.total === 'number' ? payload.total : formattedVideos.length
+			);
+			setExecution(payload.execution || null);
 		} catch (err) {
+			if (axios.isCancel(err)) return;
 			setError('Failed to fetch videos');
-			console.error('API Error:', err);
+			console.error('Advanced search error:', err);
 		} finally {
 			setLoading(false);
 		}
 	};
+
+	const buildParsedIntent = useCallback(() => {
+		const entities = query
+			.split(/\s+/)
+			.map((token) => token.trim().toLowerCase())
+			.filter((token) => token.length > 2)
+			.slice(0, 8);
+
+		return {
+			categories: selectedCategories,
+			tags: selectedTags,
+			entities,
+			location: selectedLocation,
+			resolution: selectedResolution,
+			orientation: selectedOrientation,
+		};
+	}, [
+		query,
+		selectedCategories,
+		selectedLocation,
+		selectedOrientation,
+		selectedResolution,
+		selectedTags,
+	]);
+
+	const trackSearchEvent = useCallback(async () => {
+		if (!isLoaded || !isSignedIn) return;
+		const normalizedQuery = query.trim().replace(/\s+/g, ' ');
+		if (!normalizedQuery) return;
+
+		const keyPayload = {
+			query: normalizedQuery,
+			categories: selectedCategories,
+			tags: selectedTags,
+			location: selectedLocation,
+			resolution: selectedResolution,
+			orientation: selectedOrientation,
+			durationRange,
+			dateRange: selectedDateRange,
+		};
+		const nextKey = JSON.stringify(keyPayload);
+		if (searchEventKeyRef.current === nextKey) return;
+
+		try {
+			const token = await getToken();
+			if (!token) return;
+			await ingestRecommendationSearchEvent(token, {
+				query: normalizedQuery,
+				parsed_intent: buildParsedIntent(),
+			});
+			searchEventKeyRef.current = nextKey;
+		} catch (err) {
+			console.error('Failed to ingest recommendation search event:', err);
+		}
+	}, [
+		buildParsedIntent,
+		durationRange,
+		getToken,
+		isLoaded,
+		isSignedIn,
+		query,
+		selectedCategories,
+		selectedDateRange,
+		selectedLocation,
+		selectedOrientation,
+		selectedResolution,
+		selectedTags,
+	]);
+
+	const trackClickEvent = useCallback(
+		async (video: any) => {
+			if (!isLoaded || !isSignedIn) return;
+			try {
+				const token = await getToken();
+				if (!token || !video?.id) return;
+
+				const categoryValue = video?.category;
+				const categoriesPayload = Array.isArray(categoryValue)
+					? categoryValue.filter((item) => typeof item === 'string')
+					: typeof categoryValue === 'string' && categoryValue
+					? [categoryValue]
+					: [];
+
+				await ingestRecommendationClickEvent(token, {
+					video_id: video.id,
+					event_type: 'click',
+					event_context: {
+						categories: categoriesPayload,
+						tags: Array.isArray(video?.tags) ? video.tags : [],
+					},
+				});
+			} catch (err) {
+				console.error('Failed to ingest recommendation click event:', err);
+			}
+		},
+		[getToken, isLoaded, isSignedIn]
+	);
 
 	// Fetch facets on component mount
 	useEffect(() => {
 		fetchFacets();
 	}, []);
 
-	// Fetch videos when filters change
+	// Reset to page 1 and refetch whenever filters, query, or sort change.
 	useEffect(() => {
-		fetchVideos();
-		setCurrentPage(1);
+		const timer = setTimeout(() => {
+			setCurrentPage(1);
+			fetchVideos(1);
+			void trackSearchEvent();
+		}, 350);
+
+		return () => clearTimeout(timer);
 	}, [
 		query,
 		JSON.stringify(selectedCategories),
@@ -416,7 +557,16 @@ export function SearchResults({ query, category, count }: SearchResultsProps) {
 		JSON.stringify(selectedLocation),
 		JSON.stringify(selectedResolution),
 		JSON.stringify(selectedOrientation),
+		sortBy,
+		trackSearchEvent,
 	]);
+
+	// Refetch when paginating (server-side pagination).
+	useEffect(() => {
+		if (currentPage > 1) {
+			fetchVideos(currentPage);
+		}
+	}, [currentPage]);
 
 	// Handle category filter changes
 	const handleCategoryChange = (categoryKey: string, checked: boolean) => {
@@ -493,40 +643,9 @@ export function SearchResults({ query, category, count }: SearchResultsProps) {
 		return `${mins}:${secs.toString().padStart(2, '0')}`;
 	};
 
-	// Sort results
-	const sortedResults = useMemo(() => {
-		const results = [...videos];
-		switch (sortBy) {
-			case 'newest':
-				results.sort(
-					(a, b) =>
-						new Date(b.uploadDate).getTime() - new Date(a.uploadDate).getTime()
-				);
-				break;
-			case 'oldest':
-				results.sort(
-					(a, b) =>
-						new Date(a.uploadDate).getTime() - new Date(b.uploadDate).getTime()
-				);
-				break;
-			case 'popular':
-				results.sort((a, b) => b.views - a.views);
-				break;
-			case 'duration':
-				results.sort((a, b) => a.duration - b.duration);
-				break;
-			default:
-				break;
-		}
-		return results;
-	}, [videos, sortBy]);
-
-	const totalPages = Math.ceil(sortedResults.length / RESULTS_PER_PAGE);
-	const startIndex = (currentPage - 1) * RESULTS_PER_PAGE;
-	const currentResults = sortedResults.slice(
-		startIndex,
-		startIndex + RESULTS_PER_PAGE
-	);
+	// Sorting and pagination are handled server-side by advanced-search.
+	const currentResults = videos;
+	const totalPages = Math.max(1, Math.ceil(totalResults / RESULTS_PER_PAGE));
 
 	const goToPage = (page: number) => {
 		setCurrentPage(page);
@@ -879,7 +998,7 @@ export function SearchResults({ query, category, count }: SearchResultsProps) {
 								: 'Browse Videos'}
 						</h2>
 						<p className='text-muted-foreground'>
-							{sortedResults.length.toLocaleString()} videos found
+							{totalResults.toLocaleString()} videos found
 							{(selectedCategories.length > 0 ||
 								selectedTags.length > 0 ||
 								selectedLocation.length > 0 ||
@@ -891,6 +1010,11 @@ export function SearchResults({ query, category, count }: SearchResultsProps) {
 								selectedDateRange.end) && (
 								<span className='ml-2 text-blue-600'>
 									(with filters applied)
+								</span>
+							)}
+							{execution?.total_ms !== undefined && (
+								<span className='ml-2 text-xs text-muted-foreground'>
+									· {execution.total_ms} ms
 								</span>
 							)}
 						</p>
@@ -938,12 +1062,12 @@ export function SearchResults({ query, category, count }: SearchResultsProps) {
 					}
 				>
 					{currentResults.map((video) => (
-						<VideoCard key={video.id} video={video} />
+						<VideoCard key={video.id} video={video} onOpen={trackClickEvent} />
 					))}
 				</div>
 
 				{/* Empty State */}
-				{sortedResults.length === 0 && !loading && (
+				{totalResults === 0 && !loading && (
 					<div className='text-center py-12'>
 						<p className='text-muted-foreground'>
 							No videos found matching your criteria.
@@ -1003,4 +1127,6 @@ export function SearchResults({ query, category, count }: SearchResultsProps) {
 			</div>
 		</div>
 	);
-}
+});
+
+SearchResults.displayName = 'SearchResults';

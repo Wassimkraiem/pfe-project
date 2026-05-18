@@ -1,0 +1,50 @@
+flowchart LR
+    %% Recommendation System Use-Case Diagram
+    %% Scope: videosearchv0 home dashboard + AR-api recommendations + videos-search-api candidate retrieval
+
+    user[User]
+    home[Home Dashboard<br/>videosearchv0]
+    ar[AR-api Recommendation System]
+    pg[(PostgreSQL)]
+    searchapi[videos-search-api<br/>advanced-search]
+
+    subgraph FE["Frontend Use Cases (videosearchv0)"]
+        uc1([Open home dashboard])
+        uc2([View \"Recommended for You\" section])
+        uc3([Click recommended video])
+    end
+
+    subgraph BE["Backend Use Cases (AR-api /recommendations/*)"]
+        uc4([Record search event<br/>POST /recommendations/events/search])
+        uc5([Record click event<br/>POST /recommendations/events/click])
+        uc6([Build recommendation seed<br/>from recent intent + profile])
+        uc7([Fetch recommendation candidates<br/>from videos-search-api])
+        uc8([Rank, diversify, suppress repeats])
+        uc9([Return recommendation feed<br/>GET /recommendations])
+    end
+
+    user --> uc1
+    user --> uc3
+    home --> uc2
+    uc1 --> home
+    uc2 --> home
+    uc3 --> home
+
+    home --> uc9
+    home --> uc5
+    home -. optional search activity .-> uc4
+
+    uc4 --> ar
+    uc5 --> ar
+    uc9 --> ar
+    ar --> uc6
+    uc6 --> pg
+    ar --> uc7
+    uc7 --> searchapi
+    searchapi --> ar
+    ar --> uc8
+    uc8 --> uc9
+    uc9 --> home
+
+    note1["Output:<br/>Personalized recommendations are shown on the home dashboard<br/>before the \"Browse by Category\" section."]
+    uc2 --- note1

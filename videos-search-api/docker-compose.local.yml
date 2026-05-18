@@ -12,6 +12,22 @@ services:
       PYTHONUNBUFFERED: 1
       FLASK_APP: sev.app:bviral_app
       FLASK_DEBUG: 1
+      REDIS_URL: redis://videos-redis:6379/0
+      SEARCH_CACHE_TTL: "300"
+      SEARCH_CACHE_ENABLED: "true"
+      DISABLE_EMBEDDINGS: "false"
+      EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-openai}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-text-embedding-3-small}
+      EMBEDDING_DIMENSION: ${EMBEDDING_DIMENSION:-1536}
+      VIDEOS_READ_ALIAS: ${VIDEOS_READ_ALIAS:-videos_read}
+      VIDEOS_WRITE_ALIAS: ${VIDEOS_WRITE_ALIAS:-videos_write}
+      ADVANCED_SEARCH_OPENAI_RERANK_MODE: ${ADVANCED_SEARCH_OPENAI_RERANK_MODE:-last_resort}
+      OPENAI_RERANK_TIMEOUT_SECONDS: ${OPENAI_RERANK_TIMEOUT_SECONDS:-2}
+      ADVANCED_SEARCH_OPENAI_RERANK_WEAK_GAP: ${ADVANCED_SEARCH_OPENAI_RERANK_WEAK_GAP:-0.015}
+      ADVANCED_SEARCH_OPENAI_RERANK_WEAK_HEURISTIC: ${ADVANCED_SEARCH_OPENAI_RERANK_WEAK_HEURISTIC:-0.10}
+      ADVANCED_SEARCH_RERANK_TOP_N: ${ADVANCED_SEARCH_RERANK_TOP_N:-30}
+      ADVANCED_SEARCH_TOP_RANK_BONUS: ${ADVANCED_SEARCH_TOP_RANK_BONUS:-0.05}
+      ADVANCED_SEARCH_TOP_RANK_2_3_BONUS: ${ADVANCED_SEARCH_TOP_RANK_2_3_BONUS:-0.02}
     env_file:
       - .env
     volumes:
@@ -19,7 +35,21 @@ services:
     ports:
       - "5000:5000"
     depends_on:
-      - opensearch-node1
+      opensearch-node1:
+        condition: service_started
+      videos-redis:
+        condition: service_healthy
+    networks:
+      - my-network
+
+  videos-redis:
+    image: redis:7-alpine
+    container_name: videos-redis
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
     networks:
       - my-network
 

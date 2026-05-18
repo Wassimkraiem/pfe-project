@@ -11,3 +11,7 @@ OPENSEARCH_INITIAL_ADMIN_PASSWORD = get_env(
 OPENSEARCH_AUTH_ADMIN = get_env("OPENSEARCH_AUTH_ADMIN", required=True)
 SENTRY_DSN = get_env("SENTRY_DSN", required=True)
 # API_KEYS = get_env("API_KEYS", required=True)
+
+REDIS_URL = get_env("REDIS_URL", default="redis://localhost:6379/0")
+SEARCH_CACHE_TTL = get_env("SEARCH_CACHE_TTL", default="300")
+SEARCH_CACHE_ENABLED = get_env("SEARCH_CACHE_ENABLED", default="true")

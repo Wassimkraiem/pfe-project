@@ -1,0 +1,710 @@
+\chapter{Sprint 5 — Search Orchestrator, Voice Transcription and Portals}
+
+\section*{Introduction}
+\addcontentsline{toc}{section}{Introduction}
+
+Sprint 5 builds the interactive surface of the BVIRAL Platform: an \textbf{Agentic Helper}
+service for chatbot and video discovery, a deterministic \textbf{v2 search orchestrator} over
+the hybrid search engine, a structured \textbf{filter extractor} that turns free text into typed
+parameters, an \textbf{OpenAI Whisper} voice transcription pipeline, and the two \textbf{Next.js
+portals} that wire the end-to-end experience together through BFF routes. Normal video search now
+uses a faster typed plan plus one advanced-search call.
+
+%% ─── Sprint Backlog ─────────────────────────────────────────────────────────
+\section{Sprint Backlog}
+
+\begin{table}[H]
+\centering
+\caption{Sprint 5 Backlog}
+\label{tab:sprint5_backlog}
+\begin{tabularx}{\textwidth}{clXcc}
+\toprule
+\textbf{ID} & \textbf{Story} & \textbf{Task} & \textbf{Effort (d)} & \textbf{Prio.} \\
+\midrule
+T5.1 & US-11 & \texttt{VideoSearchFilterPlan} structured LLM output              & 1 & M \\
+T5.2 & US-11 & Deterministic \texttt{VideoSearchService} over \texttt{/advanced-search} & 1 & M \\
+T5.3 & US-11 & ReAct agent retained as fallback for complex tool workflows & 1 & M \\
+T5.4 & US-11 & Search state, pagination follow-ups, and response metadata             & 0.5 & S \\
+T5.5 & US-13 & \texttt{/api/v1/transcribe} endpoint forwarding to Whisper        & 1 & M \\
+T5.6 & US-13 & Next.js \texttt{/api/transcribe} BFF route (proxy)                 & 0.5 & M \\
+T5.7 & US-13 & Mic button with \texttt{MediaRecorder} in both portals             & 1 & M \\
+T5.8 & —     & Video Search Portal (Next.js 15, Radix UI, Tailwind)              & 2 & M \\
+T5.9 & —     & Authentic Rights Portal (Next.js 16, Material UI, Stripe.js)       & 2 & M \\
+T5.10 & —     & ChatbotWidget component shared by both portals                    & 1 & M \\
+T5.11 & US-11 & Recommendation events API (\texttt{/recommendations/events/*})      & 1 & M \\
+T5.12 & US-11 & User interest profile model + blend ranking service               & 1 & M \\
+T5.13 & US-11 & Search portal instrumentation (search/click events)               & 1 & M \\
+T5.14 & US-11 & Anti-repetition ranking (seen suppression, freshness, exploration) & 1 & M \\
+T5.15 & US-11 & Query rewriting for retrieval-optimised RAG queries               & 0.5 & S \\
+T5.16 & US-11 & Relevance grading with corrective re-retrieval (CRAG pattern)     & 1   & S \\
+T5.17 & US-11 & Semantic query enrichment for video search (vector optimisation)  & 0.5 & S \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+%% ─── Design ─────────────────────────────────────────────────────────────────
+\section{Design}
+
+\subsection{Use Case Diagram for Sprint 5}
+
+Sprint 5 surfaces the \emph{Invoke video-search agent} and \emph{Transcribe audio query} use cases
+presented in the global use-case diagram (Figure~\ref{fig:uc_global}) and in
+Figure~\ref{fig:uc_chat}.
+
+\subsection{Class Diagram for Sprint 5}
+
+The first implementation used an in-memory conversation window and a ReAct loop. The
+v2 architecture keeps the same public API but introduces a typed orchestration layer: a unified
+router classifies each request, Qdrant powers RAG answers, Redis can persist short-term memory
+with TTL, and \texttt{VideoSearchService} converts free-text search requests into a validated
+\texttt{VideoSearchPlan}. The key Sprint 5 model remains the structured search plan, now aligned
+with the advanced hybrid search endpoint.
+
+\begin{lstlisting}[language=python, caption={VideoSearchFilterPlan Pydantic model}]
+class VideoSearchFilterPlan(BaseModel):
+    method: Literal["auto", "semantic", "filters"] = "auto"
+    query: str = ""
+    k: int = Field(default=10, ge=1, le=50)
+    categories: list[str] = Field(default_factory=list)
+    tags: list[str] = Field(default_factory=list)
+    duration_min: float | None = None
+    duration_max: float | None = None
+    locations: list[str] = Field(default_factory=list)
+    resolutions: list[str] = Field(default_factory=list)
+    orientation: list[str] = Field(default_factory=list)
+    video_id: str | None = None
+    offset: int = Field(default=0, ge=0)
+    limit: int = Field(default=10, ge=1, le=50)
+\end{lstlisting}
+
+\subsection{Sequence Diagrams}
+
+\subsubsection{v2 Auto Routing and Advanced Search}
+
+Figure~\ref{fig:seq_agent} shows the current v2 flow. A request first goes through the
+structured router. If the route is \texttt{VIDEO\_SEARCH}, the service loads the previous search
+state, extracts a typed plan, normalizes it deterministically, and calls the advanced hybrid
+search endpoint once. ReAct is not on the normal path; it remains a fallback for future multi-tool
+exploration.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[x=1cm, y=1cm, font=\fontsize{7}{8}\selectfont]
+\node[sdFE]   (pUser)   at ( 0.0, 0) {User};
+\node[sdFE]   (pBFF)    at ( 2.5, 0) {Portal BFF};
+\node[sdBE]   (pChat)   at ( 5.0, 0) {Chat API};
+\node[sdExt]  (pRouter) at ( 7.5, 0) {Router LLM};
+\node[sdData] (pMem)    at (10.0, 0) {Redis\\Memory};
+\node[sdBE]   (pSearch) at (12.5, 0) {VideoSearch\\Service};
+\node[sdData] (pVideo)  at (15.0, 0) {Videos API\\Advanced};
+
+\foreach \x in {0.0, 2.5, 5.0, 7.5, 10.0, 12.5, 15.0}
+  \draw[dashed, gray!50] (\x,-0.3) -- (\x,-12.2);
+
+\draw[sdmsg] (0.0,-0.85) -- node[above, pos=0.5]{search request} (2.5,-0.85);
+\draw[sdmsg] (2.5,-1.55) -- node[above, pos=0.5]{POST /api/v1/chat} (5.0,-1.55);
+\draw[sdmsg] (5.0,-2.25) -- node[above, pos=0.5]{classify route} (7.5,-2.25);
+\draw[sdret] (7.5,-2.95) -- node[above, pos=0.5]{VIDEO\_SEARCH + confidence} (5.0,-2.95);
+\draw[sdmsg] (5.0,-3.65) -- node[above, pos=0.5]{load history + last plan} (10.0,-3.65);
+\draw[sdret] (10.0,-4.35) -- node[above, pos=0.5]{window + search state} (5.0,-4.35);
+\draw[sdmsg] (5.0,-5.05) -- node[above, pos=0.5]{question, history, previous plan} (12.5,-5.05);
+\draw[sdmsg] (12.5,-5.75) to[out=-30,in=30] node[right, pos=0.5]{extract typed plan} (12.5,-6.45);
+\draw[sdmsg] (12.5,-7.15) to[out=-30,in=30] node[right, pos=0.5]{normalize filters + pagination} (12.5,-7.85);
+\draw[sdmsg] (12.5,-8.55) -- node[above, pos=0.5]{POST /advanced-search} (15.0,-8.55);
+\draw[sdret] (15.0,-9.25) -- node[above, pos=0.5]{items, total, execution} (12.5,-9.25);
+\draw[sdmsg] (12.5,-9.95) -- node[above, pos=0.5]{save last plan} (10.0,-9.95);
+\draw[sdret] (12.5,-10.65) -- node[above, pos=0.5]{videos + search action} (5.0,-10.65);
+\draw[sdret] (5.0,-11.35) -- node[above, pos=0.5]{ChatResponse} (0.0,-11.35);
+
+\node[sdnote] at (14.8,-6.35) {Fallback path\\only if advanced\\search is disabled};
+\draw[->, dashed, gray!55] (12.5,-6.45) -- (14.1,-6.35);
+
+\end{tikzpicture}
+\caption{Agentic Helper v2 video search sequence — router, typed plan and advanced search}
+\label{fig:seq_agent}
+\end{figure}
+
+\subsubsection{Audio Transcription}
+
+Figure~\ref{fig:seq_transcribe} captures the voice-to-chat pipeline, from the browser mic button
+to the Agentic Helper proxy to OpenAI Whisper.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[x=1cm, y=1cm, font=\fontsize{7}{8}\selectfont]
+\node[sdFE]  (pUser)    at (0,  0) {User\\(browser)};
+\node[sdFE]  (pPortal)  at (3,  0) {Portal BFF\\(Next.js)};
+\node[sdBE]  (pAgent)   at (6,  0) {Agentic\\Helper};
+\node[sdExt] (pWhisper) at (9,  0) {OpenAI\\Whisper};
+
+\foreach \x in {0, 3, 6, 9}
+  \draw[dashed, gray!50] (\x,-0.3) -- (\x,-9.5);
+
+\draw[sdmsg] (0,-0.85) -- node[above, pos=0.5]{click mic button} (3,-0.85);
+\draw[sdmsg] (3,-1.57) -- node[above, pos=0.5]{MediaRecorder.start()} (0,-1.57);
+\draw[sdmsg] (0,-2.29) to[out=-30,in=30] node[right, pos=0.5]{stream audio chunks} (0,-3.01);
+\draw[sdmsg] (0,-3.73) -- node[above, pos=0.5]{stop recording (audio Blob)} (3,-3.73);
+\draw[sdmsg] (3,-4.45) -- node[above, pos=0.5]{POST /api/transcribe (multipart)} (6,-4.45);
+\draw[sdmsg] (6,-5.17) -- node[above, pos=0.5]{POST /v1/audio/transcriptions (Whisper)} (9,-5.17);
+\draw[sdret] (9,-5.89) -- node[above, pos=0.5]{\{text: "transcribed content"\}} (6,-5.89);
+\draw[sdret] (6,-6.61) -- node[above, pos=0.5]{\{transcription\}} (3,-6.61);
+\draw[sdret] (3,-7.33) -- node[above, pos=0.5]{pre-fill chat input} (0,-7.33);
+\draw[sdmsg] (0,-8.05) -- node[above, pos=0.5]{(optional) edit + submit as message} (3,-8.05);
+
+\node[sdnote] at (11.0,-5.53) {Supports mp3,\\mp4, wav, webm\\up to 25MB};
+\draw[->, dashed, gray!50] (9,-5.53) -- (10.3,-5.53);
+
+\end{tikzpicture}
+\caption{Audio transcription sequence diagram — Whisper pipeline}
+\label{fig:seq_transcribe}
+\end{figure}
+
+%% ─── Implementation ────────────────────────────────────────────────────────
+\section{Implementation}
+
+\subsection{v2 Agentic Helper Architecture}
+
+The optimized architecture treats the chatbot as an orchestrated backend system instead of a
+single prompt. The \texttt{/api/v1/chat} endpoint accepts three modes:
+\texttt{default}, \texttt{video\_search}, and \texttt{auto}. In \texttt{auto} mode, a structured
+router returns one of five routes: \texttt{CHAT\_RAG}, \texttt{VIDEO\_SEARCH},
+\texttt{DIRECT}, \texttt{OUT\_OF\_SCOPE}, or \texttt{SUPPORT\_HANDOFF}. This makes routing
+observable and testable before any expensive retrieval or tool execution begins.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+  x=1cm, y=1cm,
+  block/.style={draw=teal!70!black, fill=teal!8, rounded corners=4pt,
+    minimum width=3.2cm, minimum height=0.78cm, align=center,
+    font=\fontsize{8}{9}\selectfont},
+  data/.style={draw=violet!70!black, fill=violet!8, rounded corners=4pt,
+    minimum width=3.0cm, minimum height=0.78cm, align=center,
+    font=\fontsize{8}{9}\selectfont},
+  ext/.style={draw=gray!65, fill=gray!8, rounded corners=4pt,
+    minimum width=3.0cm, minimum height=0.78cm, align=center,
+    font=\fontsize{8}{9}\selectfont},
+  arr/.style={->, >=Stealth, thick}
+]
+\node[block] (api) at (0,0) {\texttt{/api/v1/chat}\\FastAPI endpoint};
+\node[block] (router) at (0,-1.35) {Structured router\\route + confidence};
+\node[block] (rag) at (-4.0,-3.0) {RAG answer chain\\policy + citations};
+\node[block] (search) at (0,-3.0) {VideoSearchService\\typed plan executor};
+\node[block] (direct) at (4.3,-3.0) {Direct / handoff\\guarded response};
+\node[data] (qdrant) at (-4.0,-4.55) {Qdrant\\knowledge chunks};
+\node[ext] (hybrid) at (0,-4.55) {Videos Search API\\\texttt{/advanced-search}};
+\node[data] (redis) at (4.3,-4.55) {Redis memory\\window + state TTL};
+\node[ext] (fallback) at (0,-7.25) {Fallback path\\optional multi-tool path};
+\node[block] (resp) at (0,-6.0) {ChatResponse\\answer, videos, action, metadata};
+
+\draw[arr] (api) -- (router);
+\draw[arr] (router) -- (rag);
+\draw[arr] (router) -- (search);
+\draw[arr] (router) -- (direct);
+\draw[arr] (rag) -- (qdrant);
+\draw[arr] (search) -- (hybrid);
+\draw[arr] (router) -- (redis);
+\draw[arr, dashed, gray!70] (search) -- (fallback);
+\draw[arr] (rag) |- (resp);
+\draw[arr] (search) -- (resp);
+\draw[arr] (direct) |- (resp);
+\end{tikzpicture}
+\caption{Agentic Helper v2 — explicit routing, deterministic search, RAG and memory}
+\label{fig:agentic_helper_v2}
+\end{figure}
+
+\subsection{Deterministic Advanced Video Search}
+
+The original ReAct loop was useful for prototyping, but it was not the best default for a
+high-volume search path. The optimized path is deterministic:
+
+\begin{enumerate}
+  \item \texttt{VideoSearchPlan} is extracted with structured output.
+  \item Server-side normalization applies hard rules for top/trending, newest/oldest,
+    shortest/longest, exact video IDs, categories, orientation, duration, resolution, and
+    pagination follow-ups.
+  \item The plan is converted to the \texttt{/api/videos/advanced-search} payload:
+    \texttt{query}, \texttt{filters}, \texttt{sort}, \texttt{pagination}, and optional
+    \texttt{debug}.
+  \item The client uses strict timeouts, retries, API-key headers, and base-URL fallback.
+  \item The response is shaped into video cards, \texttt{search\_filters},
+    \texttt{search\_action}, \texttt{search\_url}, \texttt{total}, \texttt{next\_offset},
+    \texttt{execution}, and \texttt{fallbacks\_used}.
+\end{enumerate}
+
+This design uses the advanced search engine from Sprint 3 as the single ranking source of truth.
+It avoids unnecessary agent loops for normal searches, reduces token cost, and makes search
+behavior easier to test with deterministic unit tests. The previous ReAct agent remains behind the
+service boundary as a fallback for future exploratory workflows that genuinely need multiple tool
+calls.
+
+\subsection{Semantic Query Enrichment for Video Search}
+
+The deterministic plan extractor produces a \texttt{plan.query} that is the semantic portion of
+the user request after filters have been stripped. While this is already an improvement over
+passing the raw message to OpenSearch, it still has a vocabulary mismatch issue: a short,
+conversational phrase such as \emph{``funny dog videos''} may not align closely with the dense
+embedding space learned from video titles, descriptions, and tags.
+
+To close this gap, an optional \textbf{semantic query enrichment} step runs between
+\texttt{extract\_plan} and \texttt{normalize\_plan} inside \texttt{VideoSearchService.search()}:
+
+\begin{enumerate}
+  \item The filter extractor produces the raw \texttt{VideoSearchPlan}, including a terse
+    \texttt{plan.query}.
+  \item If \texttt{plan.query} is non-empty (i.e., the request is not a ranking-only query),
+    \texttt{LLMService.rewrite\_video\_search\_query()} expands it into a richer, more
+    descriptive form. The classifier-grade LLM is instructed to add synonyms, visual
+    descriptors, and contextual terms likely to appear in matching video metadata, while keeping
+    the result under 20 words.
+  \item The enriched query replaces \texttt{plan.query} before normalization and before the
+    \texttt{/api/videos/advanced-search} call.
+\end{enumerate}
+
+Ranking-only requests (where the filter extractor correctly leaves \texttt{query=""} because
+the user asked for ``top trending'' or ``most viewed'') are automatically skipped — no
+unnecessary LLM call is made. The feature is gated by
+\texttt{video\_search\_query\_rewriting\_enabled} so it can be toggled in \texttt{.env}
+independently of the RAG rewriting flag.
+
+Figure~\ref{fig:video_query_rewrite} shows the updated \texttt{VideoSearchService} pipeline
+with the enrichment step inserted.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+  x=1cm, y=1cm,
+  block/.style={draw=teal!70!black, fill=teal!8, rounded corners=4pt,
+    minimum width=4.6cm, minimum height=0.82cm, align=center,
+    font=\fontsize{8}{9}\selectfont},
+  data/.style={draw=violet!70!black, fill=violet!8, rounded corners=4pt,
+    minimum width=4.6cm, minimum height=0.82cm, align=center,
+    font=\fontsize{8}{9}\selectfont},
+  ext/.style={draw=gray!65, fill=gray!8, rounded corners=4pt,
+    minimum width=3.2cm, minimum height=0.82cm, align=center,
+    font=\fontsize{8}{9}\selectfont},
+  new/.style={draw=orange!70!black, fill=orange!8, rounded corners=4pt,
+    minimum width=4.6cm, minimum height=0.82cm, align=center,
+    font=\fontsize{8}{9}\selectfont},
+  dec/.style={draw=orange!70!black, fill=orange!10, diamond,
+    aspect=2.6, align=center, inner sep=2pt,
+    font=\fontsize{7.5}{8.5}\selectfont},
+  arr/.style={->, >=Stealth, thick}
+]
+\node[ext]   (q)      at (0,    0)   {User question};
+\node[block] (ext)    at (0,  -1.6)  {Plan Extraction\\[-1pt]\scriptsize\texttt{extract\_plan} → \texttt{VideoSearchPlan}};
+\node[dec]   (chk)    at (0,  -3.3)  {query non-\\empty?};
+\node[new]   (rw)     at (-3.5,-4.8) {Query Enrichment\\[-1pt]\scriptsize\texttt{rewrite\_video\_search\_query}};
+\node[block] (norm)   at (0,  -6.3)  {Plan Normalisation\\[-1pt]\scriptsize\texttt{normalize\_plan}};
+\node[data]  (api)    at (0,  -7.9)  {Advanced Search API\\[-1pt]\scriptsize\texttt{POST /api/videos/advanced-search}};
+\node[block] (resp)   at (0,  -9.5)  {VideoSearchResult\\[-1pt]\scriptsize videos, filters, answer};
+
+\draw[arr] (q)    -- (ext);
+\draw[arr] (ext)  -- (chk);
+\draw[arr] (chk.west) -| node[above, font=\scriptsize, pos=0.2]{yes} (rw.north);
+\draw[arr] (chk.south) -- node[right, font=\scriptsize]{no (skip)} (norm.north);
+\draw[arr] (rw.south) |- (norm.west);
+\draw[arr] (norm) -- (api);
+\draw[arr] (api)  -- (resp);
+
+\node[font=\fontsize{6.5}{8}\selectfont, text=orange!60!black, align=center]
+  at (3.8,-4.8) {New step\\(T5.17)};
+\end{tikzpicture}
+\caption{VideoSearchService pipeline with semantic query enrichment (T5.17)}
+\label{fig:video_query_rewrite}
+\end{figure}
+
+\paragraph{Example.}
+For the query \emph{``funny dog videos''}, the enrichment step produces a richer form such as
+\emph{``hilarious dogs playing tricks humor comedy canine pets funny clips''}, which achieves
+higher cosine similarity against video embeddings derived from matching titles and descriptions.
+The semantic query passes through \texttt{normalize\_plan} unchanged (normalization only touches
+filters, sort, and pagination) before being sent to OpenSearch.
+
+\subsection{Memory, Citations and Reliability}
+
+Conversation memory now has two implementations. Local development can use
+\texttt{InMemoryChatHistoryStore}, while production can configure \texttt{CHAT\_HISTORY\_REDIS\_URL}
+to store the latest conversation window and search state with a TTL. Search follow-ups such as
+``show more'' or ``same but vertical'' reuse the previous \texttt{VideoSearchPlan} from this
+state store.
+
+RAG responses include source metadata in the API response through \texttt{sources[]} and
+\texttt{citations[]}. Search responses include execution metadata and fallback information from
+the advanced search service. These fields make the assistant easier to debug without exposing
+internal prompts to the frontend.
+
+\subsection{Agentic RAG Pipeline}
+
+The original RAG path retrieved chunks directly from the raw conversational question and passed
+all returned chunks to the LLM without any relevance check. Two weaknesses motivated an upgrade:
+
+\begin{itemize}
+  \item \textbf{Vocabulary mismatch}: a conversational question such as \emph{``what about my
+    cut?''} contains pronouns and implicit references that map poorly to the keyword-dense
+    representations stored in Qdrant.
+  \item \textbf{Context pollution}: low-scoring, off-topic chunks that pass the top-$k$
+    threshold are sent to the answer model unchanged, diluting or contradicting the grounded
+    evidence.
+\end{itemize}
+
+The upgraded pipeline adds two corrective steps that transform the single-hop RAG into a
+multi-step \textbf{Agentic RAG} loop, drawing on the Corrective RAG (CRAG)
+pattern~\cite{crag_2024} and query-rewriting techniques for
+retrieval~\cite{query_rewriting_rag}.
+
+\subsubsection{Step 1 — Query Rewriting}
+
+Before calling the Qdrant retriever, a fast \textbf{classifier-grade LLM call}
+(\texttt{LLMService.rewrite\_rag\_query}) rewrites the conversational question into a
+concise, coreference-resolved, keyword-dense retrieval query. The conversation history window
+is included so the model can resolve pronouns and context fragments:
+
+\begin{center}
+\textit{``what about my cut?''} \quad $\longrightarrow$ \quad
+\textit{``creator revenue share percentage BVIRAL licensing agreement''}
+\end{center}
+
+The original question is preserved for the final answer chain; only the retrieval step uses the
+rewritten query. The cheaper classifier model handles this step, keeping added latency minimal.
+
+\subsubsection{Step 2 — Relevance Grading and Corrective Re-retrieval}
+
+After retrieval, each chunk is graded independently and \textbf{in parallel}
+(\texttt{LLMService.grade\_chunks}) using a structured output call
+(\texttt{with\_structured\_output(ChunkGrade)}). The model assigns a binary
+\texttt{relevant: true/false} per chunk. If the number of relevant chunks falls below a
+configurable threshold (\texttt{rag\_min\_relevant\_chunks}, default~2), the service performs a
+\textbf{corrective re-retrieval} on the original unmodified question, merges the two result
+sets, deduplicates by chunk~id, and caps the combined list at \texttt{rag\_top\_k}.
+
+The fallback re-retrieval activates only when the rewritten query under-performs — adding at
+most one extra retrieval round-trip precisely on the cases that matter most. Normal requests pay
+only the cost of parallel grading calls, which complete concurrently with low overhead thanks to
+\texttt{asyncio.gather}.
+
+Both steps are individually gated by feature flags
+(\texttt{rag\_query\_rewriting\_enabled}, \texttt{rag\_relevance\_grading\_enabled}) so either
+can be disabled in \texttt{.env} without code changes.
+
+Figure~\ref{fig:agentic_rag} illustrates the complete pipeline.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+  x=1cm, y=1cm,
+  block/.style={draw=teal!70!black, fill=teal!8, rounded corners=4pt,
+    minimum width=4.4cm, minimum height=0.84cm, align=center,
+    font=\fontsize{8}{9}\selectfont},
+  data/.style={draw=violet!70!black, fill=violet!8, rounded corners=4pt,
+    minimum width=4.4cm, minimum height=0.84cm, align=center,
+    font=\fontsize{8}{9}\selectfont},
+  ext/.style={draw=gray!65, fill=gray!8, rounded corners=4pt,
+    minimum width=3.2cm, minimum height=0.84cm, align=center,
+    font=\fontsize{8}{9}\selectfont},
+  dec/.style={draw=orange!70!black, fill=orange!10, diamond,
+    aspect=2.8, align=center, inner sep=3pt,
+    font=\fontsize{7.5}{8.5}\selectfont},
+  arr/.style={->, >=Stealth, thick}
+]
+%% ─── Main vertical flow ────────────────────────────────────────────────────
+\node[ext]   (q)     at (0,    0)   {User question};
+\node[block] (rw)    at (0,  -1.7)  {Query Rewriting\\[-1pt]\scriptsize\texttt{rewrite\_rag\_query}};
+\node[data]  (ret)   at (0,  -3.4)  {Qdrant Retrieval\\[-1pt]\scriptsize top-$k$ chunks};
+\node[block] (grade) at (0,  -5.1)  {Relevance Grading\\[-1pt]\scriptsize\texttt{grade\_chunks} (parallel)};
+\node[dec]   (chk)   at (0,  -6.9)  {relevant chunks\\$\geq$ threshold?};
+\node[block] (ans)   at (0,  -9.6)  {Answer with graded context\\[-1pt]\scriptsize\texttt{ask\_with\_context}};
+%% ─── Corrective fallback branch ────────────────────────────────────────────
+\node[data]  (retry) at (5.8, -8.0) {Re-retrieve\\[-1pt]\scriptsize on original question};
+\node[block] (merge) at (5.8, -9.6) {Merge + deduplicate\\[-1pt]\scriptsize top-$k$};
+%% ─── Arrows ─────────────────────────────────────────────────────────────────
+\draw[arr] (q)     -- (rw);
+\draw[arr] (rw)    -- node[right, font=\scriptsize]{\textit{rewritten query}} (ret);
+\draw[arr] (ret)   -- node[right, font=\scriptsize]{\textit{top-$k$ chunks}} (grade);
+\draw[arr] (grade) -- (chk);
+\draw[arr] (chk.south)  -- node[left, font=\scriptsize]{yes} (ans.north);
+\draw[arr] (chk.east)   -| node[above, font=\scriptsize, pos=0.18]{no} (retry);
+\draw[arr] (retry)  -- (merge);
+\draw[arr] (merge.west) -- (ans.east);
+\end{tikzpicture}
+\caption{Agentic RAG pipeline — query rewriting, parallel relevance grading, and corrective re-retrieval}
+\label{fig:agentic_rag}
+\end{figure}
+
+\subsubsection{Configuration}
+
+\begin{table}[H]
+\centering
+\caption{Agentic RAG configuration knobs}
+\label{tab:agentic_rag_config}
+\begin{tabularx}{\textwidth}{llX}
+\toprule
+\textbf{Setting} & \textbf{Default} & \textbf{Effect} \\
+\midrule
+\texttt{rag\_query\_rewriting\_enabled}  & \texttt{true}  & Enable/disable Step~1 query rewriting. \\
+\texttt{rag\_relevance\_grading\_enabled}& \texttt{true}  & Enable/disable Step~2 chunk grading. \\
+\texttt{rag\_min\_relevant\_chunks}      & \texttt{2}     & Threshold below which corrective re-retrieval is triggered. \\
+\texttt{rag\_top\_k}                     & \texttt{4}     & Maximum chunks kept after merging. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Voice Transcription Pipeline}
+
+The \texttt{POST /api/v1/transcribe} endpoint accepts a multipart audio file and forwards it to
+\textbf{OpenAI Whisper} (\texttt{/v1/audio/transcriptions}). Both portals expose a microphone
+button that:
+
+\begin{enumerate}
+  \item Starts the browser's \texttt{MediaRecorder} API and streams audio chunks.
+  \item Assembles the recording into a \texttt{Blob} when the user stops speaking.
+  \item Sends the blob to the Next.js BFF route (\texttt{/api/transcribe}), which proxies it
+    to the Agentic Helper.
+  \item Receives the transcribed text and pre-fills the chat input field.
+\end{enumerate}
+
+\subsection{Next.js Portals}
+
+\subsubsection{Video Search Portal (\texttt{videosearchv0/})}
+
+\begin{itemize}
+  \item \textbf{Next.js 15} with the App Router and React Server Components.
+  \item \textbf{Radix UI} primitives + \textbf{Tailwind CSS} for a dark, content-first UI.
+  \item \textbf{Clerk} for authentication and session management.
+  \item BFF routes (\texttt{app/api/chat/route.ts}, \texttt{app/api/transcribe/route.ts}) that
+    forward requests to the Agentic Helper and attach the required API key/user headers.
+\end{itemize}
+
+\subsubsection{Authentic Rights Portal (\texttt{authentic\_rights\_portal/})}
+
+\begin{itemize}
+  \item \textbf{Next.js 16} with the App Router.
+  \item \textbf{Material UI (MUI)} for dashboard-style components and tables.
+  \item \textbf{Clerk} authentication, \textbf{Stripe.js} embedded checkout,
+    \textbf{Stripe Elements} for the digital agreement signature.
+  \item BFF routes for chat, transcription, and protected AR-API calls.
+\end{itemize}
+
+\subsubsection{Admin Extensions in the Authentic Rights Portal}
+
+The rights portal was extended with an \textbf{admin workspace} dedicated to moderation,
+support supervision, and knowledge-base maintenance. Four additions were particularly important:
+
+\begin{itemize}
+  \item \textbf{Submitted-video moderation}: administrators can review user-submitted clips,
+    add moderation notes, and trigger a \emph{fake accept} or reject status used for internal
+    validation before any real library ingestion workflow is automated.
+  \item \textbf{Global conversation supervision}: an admin-only AR-API endpoint
+    (\texttt{GET /conversations/admin/all}) aggregates conversation histories across users so the
+    support team can inspect titles, participants, message counts, and the latest activity.
+  \item \textbf{Admin chatbot tester}: a dedicated console lets administrators switch between
+    \texttt{chat} mode and \texttt{video\_search} mode, test the assistant against both
+    behaviors, and inspect returned text or video cards in one interface.
+  \item \textbf{FAQ management on vector storage}: the FAQ manager was reconnected to the RAG
+    vector store rather than a static list. Through BFF routes, the portal now consumes
+    vector-management endpoints for listing, semantic search, creation, update, and deletion.
+\end{itemize}
+
+This design keeps the browser isolated from the Agentic Helper API key while still exposing a
+usable knowledge-base administration surface. The FAQ management flow now maps business FAQ
+records to vector chunks, where the question, answer, visibility flag, and display order are
+stored in \texttt{metadata\_json}, while semantic search is delegated to
+\texttt{GET /vectors/search}.
+
+\subsubsection{Shared ChatbotWidget}
+
+Both portals embed a shared \texttt{ChatbotWidget} component that:
+\begin{itemize}
+  \item Maintains the chat message list and typing state in React state.
+  \item Renders video result cards directly in the conversation flow when the Agentic Helper
+    returns a \texttt{videos[]} array.
+  \item Includes the mic button that triggers the Whisper transcription flow.
+  \item Persists conversation continuity through the \texttt{X-User-Id} header.
+\end{itemize}
+
+\subsection{FAQ Vector Administration}
+
+To support non-developer maintenance of the support knowledge base, the Agentic Helper now exposes
+a dedicated vector-management API under \texttt{/api/v1/rag/vectors}. The endpoints allow
+operators to:
+\begin{itemize}
+  \item list stored vectors with pagination and optional source filtering;
+  \item run semantic search over the FAQ collection;
+  \item create a new vector from manual content;
+  \item update an existing vector, automatically re-embedding edited content;
+  \item delete obsolete vectors by point id.
+\end{itemize}
+
+This administrative surface is used by the portal BFF routes to power FAQ maintenance screens
+without direct access to Qdrant credentials from the frontend.
+
+\subsection{Delivered Interfaces}
+
+Sprint 5 groups the user-facing portal surfaces delivered across the platform: the public Video
+Search Portal landing pages, the authenticated dashboard views, the embedded chatbot experience,
+and the rights-portal administration screens.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{\detokenize{figures/videosearch/videosearch portal header.png}}
+\caption{Video Search Portal — hero section with semantic search bar}
+\label{fig:vsp_hero}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{\detokenize{figures/videosearch/videosearch portal latest adition.png}}
+\caption{Video Search Portal — latest additions section on the authenticated dashboard}
+\label{fig:vsp_latest}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{\detokenize{figures/videosearch/videosearch portal categorie page.png}}
+\caption{Video Search Portal — browse by category page}
+\label{fig:vsp_categories}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\begin{subfigure}[t]{\textwidth}
+  \centering
+  \includegraphics[width=\textwidth]{\detokenize{figures/videosearch/videosearch home page part 4.png}}
+  \caption{Pricing plan and platform overview}
+\end{subfigure}
+\vspace{0.5em}
+\begin{subfigure}[t]{\textwidth}
+  \centering
+  \includegraphics[width=\textwidth]{\detokenize{figures/videosearch/videosearch home page part 5.png}}
+  \caption{Value proposition sections}
+\end{subfigure}
+\caption{Video Search Portal — public landing page (pricing and value propositions)}
+\label{fig:vsp_landing_1}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\begin{subfigure}[t]{\textwidth}
+  \centering
+  \includegraphics[width=\textwidth]{\detokenize{figures/videosearch/videosearch home page part 6.png}}
+  \caption{Creator testimonials and blog articles}
+\end{subfigure}
+\vspace{0.5em}
+\begin{subfigure}[t]{\textwidth}
+  \centering
+  \includegraphics[width=\textwidth]{\detokenize{figures/videosearch/videosearch home page part 7.png}}
+  \caption{Service offerings and getting started}
+\end{subfigure}
+\caption{Video Search Portal — testimonials and service overview}
+\label{fig:vsp_landing_2}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{\detokenize{figures/videosearch/videosearch home page part 8.png}}
+\caption{Video Search Portal — FAQ section and footer}
+\label{fig:vsp_faq_footer}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.97\textwidth]{\detokenize{figures/ar/ser dashboard.png}}
+\caption{Authentic Rights Portal — dashboard overview}
+\label{fig:screen_ar_dashboard}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.97\textwidth]{\detokenize{figures/ar/ar manage subscription page.png}}
+\caption{Authentic Rights Portal — manage subscription}
+\label{fig:screen_ar_manage_subscription}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.97\textwidth]{\detokenize{figures/ar/ar support and help page.png}}
+\caption{Authentic Rights Portal — support and help}
+\label{fig:screen_ar_support_help}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.97\textwidth]{\detokenize{figures/ar/ar submit video page.png}}
+\caption{Authentic Rights Portal — submit video form}
+\label{fig:screen_ar_submit_video}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.97\textwidth]{\detokenize{figures/ar/ar playlist videos page.png}}
+\caption{Authentic Rights Portal — playlist videos}
+\label{fig:screen_ar_playlists}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.97\textwidth]{\detokenize{figures/ar/playlist video grid.png}}
+\caption{Authentic Rights Portal — playlist video grid}
+\label{fig:screen_ar_playlist_video_grid}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.55\textwidth]{\detokenize{figures/videosearch/chatbotscreenshort videosearch.png}}
+\caption{Video Search Portal — AI chatbot returning video results for a natural language query}
+\label{fig:screen_vp_chat}
+\end{figure}
+
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{\detokenize{figures/ar/ar admin custom quotes.png}}
+\caption{Admin — Pending Custom Quotes: review quote requests and assign a Stripe price ID}
+\label{fig:admin_custom_quotes}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{\detokenize{figures/ar/ar admin quotes status.png}}
+\caption{Admin — Custom Quotes Status: track payment state and account creation for each quote}
+\label{fig:admin_quotes_status}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{\detokenize{figures/ar/ar admin submited video review.png}}
+\caption{Admin — Submitted Videos: approve or reject user-submitted clips before library ingestion}
+\label{fig:admin_submitted_videos}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{\detokenize{figures/ar/ar admin user conversations.png}}
+\caption{Admin — User Conversations: inspect full chat transcripts across all users}
+\label{fig:admin_user_conversations}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{\detokenize{figures/ar/ar admin chatbot conversationt tester.png}}
+\caption{Admin — Chatbot Tester: test the assistant in chat and video-search modes with saved sessions}
+\label{fig:admin_chatbot_tester}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{\detokenize{figures/ar/ar admin faq manager.png}}
+\caption{Admin — FAQ Manager: create, edit, and publish FAQ entries backed by Qdrant vector storage}
+\label{fig:admin_faq_manager}
+\end{figure}
+
+\section*{Conclusion}
+\addcontentsline{toc}{section}{Conclusion}
+
+Sprint 5 closes the agentic layer and wires both portals to it. The final v2 design uses explicit
+routing, deterministic video-search planning, the advanced hybrid search endpoint, Redis-capable
+conversation memory, citation metadata for RAG, and guarded fallback paths. The production search
+path is now faster, cheaper, and more testable. The Whisper pipeline lets users dictate queries,
+and the rights portal exposes an admin control surface for moderation, conversation supervision,
+chatbot testing, and vector-backed FAQ maintenance. The last sprint now focuses on testing,
+deployment, and observability.

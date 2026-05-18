@@ -22,6 +22,10 @@ export function buildSigninPortalUrl(returnUrl?: string) {
 	return buildAuthPortalUrl('/signin', returnUrl, 'return_url');
 }
 
+export function buildDashboardPortalUrl() {
+	return buildAuthPortalUrl('/dashboard');
+}
+
 export function redirectToSignupPortal() {
 	if (typeof window === 'undefined') {
 		return;

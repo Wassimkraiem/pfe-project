@@ -1,0 +1,9 @@
+Given the conversation history below, rewrite the user question as a concise,
+keyword-rich standalone search query for a vector knowledge base.
+Resolve any pronouns or references using the history.
+Return only the query string, nothing else.
+
+Conversation so far:
+{history_text}
+
+User question: {question}

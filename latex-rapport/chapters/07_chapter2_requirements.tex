@@ -1,0 +1,669 @@
+\chapter{Requirements Specification (Sprint 0)}
+
+\section*{Introduction}
+\addcontentsline{toc}{section}{Introduction}
+
+Sprint 0 is a discovery and preparation sprint. This chapter identifies the system actors, lists
+the functional and non-functional requirements, organizes them into a product backlog, describes
+the work tools adopted by the team, and defines the general architecture together with static and
+dynamic design views that guide the implementation sprints.
+
+\newcommand{\toollogo}[3][2.0cm]{%
+  \begin{figure}[H]
+  \centering
+  \includegraphics[height=#1,keepaspectratio]{#2}\\[0.3em]
+  {\small\textbf{#3}}
+  \end{figure}
+}
+
+\newcommand{\toollogotriple}[6]{%
+  \begin{figure}[H]
+  \centering
+  \begin{minipage}[t]{0.28\textwidth}
+    \centering
+    \includegraphics[height=1.45cm,keepaspectratio]{#1}\\[0.25em]
+    {\small\textbf{#2}}
+  \end{minipage}
+  \hfill
+  \begin{minipage}[t]{0.28\textwidth}
+    \centering
+    \includegraphics[height=1.45cm,keepaspectratio]{#3}\\[0.25em]
+    {\small\textbf{#4}}
+  \end{minipage}
+  \hfill
+  \begin{minipage}[t]{0.28\textwidth}
+    \centering
+    \includegraphics[height=1.45cm,keepaspectratio]{#5}\\[0.25em]
+    {\small\textbf{#6}}
+  \end{minipage}
+  \end{figure}
+}
+
+\newcommand{\toollogodouble}[4]{%
+  \begin{figure}[H]
+  \centering
+  \begin{minipage}[t]{0.38\textwidth}
+    \centering
+    \includegraphics[height=1.55cm,keepaspectratio]{#1}\\[0.25em]
+    {\small\textbf{#2}}
+  \end{minipage}
+  \hfill
+  \begin{minipage}[t]{0.38\textwidth}
+    \centering
+    \includegraphics[height=1.55cm,keepaspectratio]{#3}\\[0.25em]
+    {\small\textbf{#4}}
+  \end{minipage}
+  \end{figure}
+}
+
+%% ─── 2.1 ─────────────────────────────────────────────────────────────────────
+\section{System Actors}
+
+The BVIRAL Platform has four actor types:
+
+\begin{table}[H]
+\centering
+\caption{System actors and their roles}
+\begin{tabularx}{\textwidth}{lX}
+\toprule
+\textbf{Actor} & \textbf{Description} \\
+\midrule
+\textbf{Anonymous Visitor} & Any unauthenticated user who can browse the video portal, search
+  for clips, and interact with the chatbot assistant. \\[0.4em]
+\textbf{Auth. Creator / Partner} & A registered user who has completed onboarding and holds an
+  active subscription. Can access the dashboard, manage playlists, submit videos, and use
+  the billing portal. \\[0.4em]
+\textbf{Administrator} & Internal BVIRAL staff with elevated access to review custom quote
+  requests, manage pricing, and view admin reports. \\[0.4em]
+\textbf{External System} & Stripe (payment webhooks), Clerk (authentication tokens), DAM
+  provider APIs (media access provisioning), and the SMS Scraper API (social media follower data). \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+%% ─── 2.2 ─────────────────────────────────────────────────────────────────────
+\section{Functional Requirements}
+
+\subsection{Video Search Portal}
+
+\begin{enumerate}[label=\textbf{FR-VP-\arabic*}]
+  \item Browse the video catalogue with pagination and category filtering.
+  \item Search videos by keyword or semantic query.
+  \item View detailed video information: title, duration, category, resolution, tags.
+  \item Play video previews directly in the browser.
+  \item Access an embedded AI chatbot for natural language queries.
+  \item Transcribe spoken audio queries via the microphone.
+  \item View the latest and trending clips on the homepage.
+  \item View a personalized \textbf{Recommended for You} section on the homepage, driven by
+    the user's past searches and click events.
+  \item Save videos to favorites and remove them; view the full favorites list.
+\end{enumerate}
+
+\subsection{Authentic Rights Portal (Onboarding and Dashboard)}
+
+\begin{enumerate}[label=\textbf{FR-AR-\arabic*}]
+  \item Submit social media channel URLs (Instagram, TikTok, YouTube, Facebook, Twitter/X,
+    Snapchat) to begin onboarding.
+  \item Receive automatic follower count analysis; channels over 2M followers trigger a
+    custom pricing flow.
+  \item Select a monthly or yearly subscription plan and complete Stripe embedded checkout.
+  \item Sign the digital service agreement before checkout; receive a signed PDF by email.
+  \item Complete account setup (name, account type, password) after successful payment.
+  \item Access a personal dashboard with subscription status, renewal alerts, and billing portal.
+  \item Manage playlists: create, rename, add or remove videos.
+  \item Browse and search the licensed video \textbf{library}: filter by keyword and category,
+    view video details, and download licensed clips.
+  \item Manage \textbf{favorites}: add or remove videos and view the full favorites list.
+  \item Submit new video clips for licensing review.
+  \item Interact with the embedded AI support chatbot.
+  \item \textit{Administrator}: review pending custom quote requests and set pricing.
+  \item \textit{Administrator}: access whitelist reports and subscription announcements.
+  \item \textit{Administrator}: browse and inspect all user chat conversations.
+  \item \textit{Administrator}: test the AI chatbot directly from an admin console.
+  \item \textit{Administrator}: manage the FAQ knowledge base — add, edit, search, and delete
+    FAQ entries ingested into the RAG knowledge base.
+  \item \textit{Administrator}: review submitted video clips and update their status.
+\end{enumerate}
+
+\subsection{Agentic Helper}
+
+\begin{enumerate}[label=\textbf{FR-AH-\arabic*}]
+  \item Accept chat messages and route them by intent (RAG, direct LLM, or video-search mode).
+  \item Retrieve relevant knowledge chunks via Qdrant cosine similarity for support queries.
+  \item Extract structured search filters (category, tags, duration, resolution, orientation)
+    from free-text queries and execute a \textbf{deterministic advanced search} against the
+    Videos Search API as the primary video-search path.
+  \item Fall back to the \textbf{ReAct video-search agent} when the deterministic
+    search service is unavailable.
+  \item Return video results with a search URL for direct portal navigation.
+  \item Ingest knowledge documents (JSON or Excel) into the RAG knowledge base.
+  \item Add, update, search, and delete individual FAQ entries in the RAG knowledge base via
+    dedicated admin endpoints.
+  \item Transcribe audio input using OpenAI Whisper.
+  \item Maintain per-user conversation history with a configurable memory window.
+\end{enumerate}
+
+%% ─── 2.3 ─────────────────────────────────────────────────────────────────────
+\section{Non-Functional Requirements}
+
+\begin{table}[H]
+\centering
+\caption{Non-functional requirements}
+\begin{tabularx}{\textwidth}{lX}
+\toprule
+\textbf{Category} & \textbf{Requirement} \\
+\midrule
+\textbf{Performance} & Video search returns results within 500\,ms at the 95th percentile.
+  Chat responses begin streaming within 2 seconds. \\[0.3em]
+\textbf{Scalability} & Each microservice scales independently via container replicas.
+  OpenSearch supports horizontal shard scaling. Celery workers add capacity on demand. \\[0.3em]
+\textbf{Availability} & Target uptime of 99.5\% in production. Services expose \texttt{/health}
+  and \texttt{/health} endpoint for load-balancer probes. \\[0.3em]
+\textbf{Security} & All endpoints require authentication (Clerk JWT Bearer or API key). Stripe
+  webhook payloads are verified with HMAC. Secrets are stored in per-service \texttt{.env}
+  files, excluded from version control via \texttt{.gitignore}; nothing sensitive is committed
+  to the repository. \\[0.3em]
+\textbf{Maintainability} & Domain-driven module structure (\texttt{router → services → models}).
+  Alembic manages all schema changes. Prompts are versioned text files. \\[0.3em]
+\textbf{Observability} & Sentry error tracking in production for all Python services.
+  All Celery tasks include retry/backoff metadata. \\[0.3em]
+\textbf{Portability} & The full stack runs with a single \texttt{docker compose up} command, with no manual environment setup required. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+%% ─── 2.4 ─────────────────────────────────────────────────────────────────────
+\section{Use-Case Diagrams}
+
+\subsection{Global Use-Case Diagram}
+
+Figure~\ref{fig:uc_global} shows all system use cases grouped by portal, with the human and
+system actors that interact with each.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[x=1cm, y=1cm]
+
+%% ── Video Search Portal boundary ───────────────────────────────────────────
+\draw[ucboundary, minimum width=6.2cm, minimum height=7.2cm]
+  (-4.4, 0.0) rectangle (-1.2, 7.2);
+\node[font=\small\bfseries, text=gray!60!black] at (-2.8, 7.5)
+  {Video Search Portal};
+
+\node[usecase] (uc1) at (-2.8, 6.2) {Browse videos};
+\node[usecase] (uc2) at (-2.8, 5.0) {Search videos};
+\node[usecase] (uc3) at (-2.8, 3.8) {View video detail};
+\node[usecase] (uc4) at (-2.8, 2.6) {AI chat assistant};
+\node[usecase] (uc5) at (-2.8, 1.4) {Transcribe audio};
+
+%% ── Authentic Rights Portal boundary ───────────────────────────────────────
+\draw[ucboundary, minimum width=6.2cm, minimum height=10.8cm]
+  (1.4, -0.6) rectangle (7.6, 10.2);
+\node[font=\small\bfseries, text=gray!60!black] at (4.5, 10.5)
+  {Authentic Rights Portal};
+
+\node[usecase] (uc6)  at (4.5,  9.2) {Submit channels};
+\node[usecase] (uc7)  at (4.5,  8.0) {Complete checkout};
+\node[usecase] (uc8)  at (4.5,  6.8) {Sign agreement};
+\node[usecase] (uc9)  at (4.5,  5.6) {Manage account};
+\node[usecase] (uc10) at (4.5,  4.4) {Manage playlists};
+\node[usecase] (uc11) at (4.5,  3.2) {Submit videos};
+\node[usecase] (uc12) at (4.5,  2.0) {AI support chat};
+\node[usecase] (uc13) at (4.5,  0.8) {Review quotes};
+
+%% ── include / extend ────────────────────────────────────────────────────────
+%% "Complete checkout" includes "Sign agreement"
+\draw[ucincl] (uc7) -- node[right, pos=0.5]{\guillemotleft include\guillemotright} (uc8);
+%% "AI chat" can extend to "Transcribe audio" in the VP
+\draw[ucincl] (uc5) -- node[right, pos=0.5]{\guillemotleft extend\guillemotright} (uc4);
+
+%% ── Actors ──────────────────────────────────────────────────────────────────
+% Anonymous Visitor
+\umlactor{-6.0}{5.2}{Anonymous\\Visitor}
+% Auth. Creator
+\umlactor{-6.0}{2.0}{Auth.\\Creator/Partner}
+% Administrator
+\umlactor{8.8}{0.8}{Administrator}
+% Stripe (system)
+\umlactor{8.8}{8.0}{Stripe}
+% Clerk (system)
+\umlactor{8.8}{5.6}{Clerk}
+
+%% ── Associations: Anonymous Visitor ────────────────────────────────────────
+\draw[ucassoc] (-5.4, 5.5)  -- (uc1);
+\draw[ucassoc] (-5.4, 5.0)  -- (uc2);
+\draw[ucassoc] (-5.4, 4.5)  -- (uc3);
+\draw[ucassoc] (-5.4, 4.0)  -- (uc4);
+
+%% ── Associations: Auth. Creator ────────────────────────────────────────────
+\draw[ucassoc] (-5.4, 2.3)  -- (uc2);
+\draw[ucassoc] (-5.4, 1.9)  -- (uc6);
+\draw[ucassoc] (-5.4, 1.7)  -- (uc7);
+\draw[ucassoc] (-5.4, 1.5)  -- (uc9);
+\draw[ucassoc] (-5.4, 1.3)  -- (uc10);
+\draw[ucassoc] (-5.4, 1.1)  -- (uc11);
+\draw[ucassoc] (-5.4, 0.9)  -- (uc12);
+
+%% ── Associations: External systems ─────────────────────────────────────────
+\draw[ucassoc] (8.1, 8.0) -- (uc7);
+\draw[ucassoc] (8.1, 5.6) -- (uc9);
+\draw[ucassoc] (8.1, 0.8) -- (uc13);
+
+\end{tikzpicture}
+\caption{Global use-case diagram of the BVIRAL Platform}
+\label{fig:uc_global}
+\end{figure}
+
+%% ─── 2.5 ─────────────────────────────────────────────────────────────────────
+\section{Product Backlog}
+
+The product backlog groups the functional requirements into user stories organized per epic and
+prioritized with the industrial supervisor. Priority levels follow the MoSCoW convention
+(\textbf{M}ust have, \textbf{S}hould have, \textbf{C}ould have).
+
+\small
+\begin{longtable}{@{}llp{0.52\textwidth}c@{}}
+\caption{Product backlog (user stories per epic)}
+\label{tab:product_backlog} \\
+\toprule
+\textbf{ID} & \textbf{Epic} & \textbf{User story} & \textbf{Prio.} \\
+\midrule
+\endfirsthead
+\multicolumn{4}{c}{\tablename~\thetable{} — \textit{continued}} \\
+\toprule
+\textbf{ID} & \textbf{Epic} & \textbf{User story} & \textbf{Prio.} \\
+\midrule
+\endhead
+\midrule
+\multicolumn{4}{r}{\textit{Continued on next page}} \\
+\endfoot
+\bottomrule
+\endlastfoot
+\multicolumn{4}{l}{\textit{Sprint 1 — Authentication, Onboarding and Payments}} \\
+\midrule
+US-01 & Authentication  & As a visitor, I want to sign in through Clerk so that I can access
+  the rights portal. & M \\
+US-02 & Onboarding      & As a creator, I want to submit my social channels so the platform can
+  analyze my reach. & M \\
+US-03 & Onboarding      & As a creator with $>$2M followers, I want a custom-quote flow so that
+  pricing can be negotiated. & S \\
+US-04 & Payments        & As a user, I want to complete Stripe embedded checkout and sign the
+  service agreement before payment. & M \\
+US-05 & Notifications   & As a user, I want to receive a confirmation email with a signed PDF
+  once payment is captured. & M \\
+US-06 & Dashboard       & As a subscriber, I want a dashboard showing subscription status,
+  renewal date, and a billing-portal link. & M \\
+\midrule
+\multicolumn{4}{l}{\textit{Sprint 2 — Video Indexing and Keyword Search}} \\
+\midrule
+US-07 & Video search    & As a visitor, I want keyword-based video search with filters
+  (category, duration, resolution). & M \\
+US-08 & Video search    & As a visitor, I want to browse the catalogue by category with
+  pagination. & M \\
+\midrule
+\multicolumn{4}{l}{\textit{Sprint 3 — Semantic and Parallel Search with Ranking}} \\
+\midrule
+US-09 & Video search    & As a visitor, I want semantic search so natural-language queries work
+  even without matching keywords. & M \\
+US-10 & Video search    & As a visitor, I want a hybrid ranking that combines lexical and
+  semantic signals for better relevance. & S \\
+\midrule
+\multicolumn{4}{l}{\textit{Sprint 4 — Agentic Helper: RAG and Classifier Pipeline}} \\
+\midrule
+US-11 & Agentic AI      & As a visitor, I want a chatbot that understands my query and returns
+  either support answers or video results. & M \\
+US-12 & Agentic AI      & As a support user, I want answers grounded in the BVIRAL knowledge
+  base via RAG. & M \\
+\midrule
+\multicolumn{4}{l}{\textit{Sprint 5 — Search Orchestrator, Voice Transcription and Portals}} \\
+\midrule
+US-13 & Agentic AI      & As a user, I want to dictate my query with a microphone and have it
+  transcribed into the chat input. & S \\
+US-14 & Playlists       & As a subscriber, I want to create and manage playlists of licensed
+  videos. & S \\
+US-15 & Library         & As a subscriber, I want to browse my licensed video library, search
+  by keyword or category, and download clips. & M \\
+US-16 & Video submission & As a subscriber, I want to submit new video clips for licensing review
+  and track the status of my submissions. & S \\
+US-17 & Admin           & As an admin, I want to review custom-quote requests, set pricing, and
+  view the status history of all quotes. & S \\
+US-18 & Admin           & As an admin, I want to review submitted video clips and update their
+  approval status. & S \\
+US-19 & Admin           & As an admin, I want to inspect user chat conversations, test the
+  chatbot from an admin console, and manage FAQ knowledge-base entries. & S \\
+\midrule
+\multicolumn{4}{l}{\textit{Sprint 6 — Personalized Recommendations}} \\
+\midrule
+US-20 & Personalization & As a subscriber, I want the platform to learn from my searches and
+  clicks to surface relevant videos in my feed. & S \\
+US-21 & Favorites       & As a subscriber, I want to save videos to a favorites list and remove
+  them at any time. & S \\
+\end{longtable}
+\normalsize
+
+%% ─── 2.6 ─────────────────────────────────────────────────────────────────────
+\section{Work Tools}
+
+\subsection{Frameworks and Libraries}
+
+\textbf{FastAPI}
+
+FastAPI is used to build the AR-API and Agentic Helper backend services with asynchronous endpoints,
+automatic OpenAPI documentation, and clear request/response schema validation.
+
+\toollogo{figures/logos/fastapilogo.png}{FastAPI}
+
+\textbf{Flask + Flask-RESTX}
+
+Flask with Flask-RESTX is used in the Videos Search API to expose REST endpoints and organize service
+resources around OpenSearch video indexing and query operations.
+
+\toollogo{figures/logos/flasklogo.png}{Flask}
+
+\textbf{SQLAlchemy 2.0 async + asyncpg}
+
+SQLAlchemy asynchronous ORM with asyncpg provides non-blocking PostgreSQL data access in FastAPI
+services, enabling efficient database interactions under concurrent API workloads.
+
+\toollogo{figures/logos/SQLAlchemy-logo.png}{SQLAlchemy}
+
+\textbf{Alembic}
+
+Alembic is used for database schema migration management, allowing controlled evolution of PostgreSQL
+tables, constraints, and relationships across project iterations.
+
+\toollogo{figures/logos/alembic logo.png}{Alembic}
+
+\textbf{Celery + Redis}
+
+Celery with Redis is used to process asynchronous and scheduled background tasks, such as delayed
+operations and periodic jobs that should not block API request handling.
+
+\toollogodouble
+  {figures/logos/celery logo.png}{Celery}
+  {figures/logos/Logo-redis.png}{Redis}
+
+\textbf{LangChain}
+
+LangChain is used to implement the chatbot orchestration logic, including prompt pipelines, tool
+calling behavior, and multi-step reasoning flows for video search interactions.
+
+\toollogo{figures/logos/LangChain_Logo.png}{LangChain}
+
+\textbf{Qdrant}
+
+Qdrant is the vector database used to store embeddings and perform semantic similarity retrieval,
+supporting context grounding for the AI assistant knowledge workflow.
+
+\toollogo{figures/logos/qdrant-logo.png}{Qdrant}
+
+\textbf{OpenSearch Python}
+
+The OpenSearch Python client is used by the Videos Search API to query and manage indexed video
+documents with lexical search and vector-aware retrieval capabilities.
+
+\toollogo{figures/logos/opensearch logo.png}{OpenSearch}
+
+\textbf{Next.js 15 / 16}
+
+Next.js powers both web portals and provides server-side rendering, App Router features, and API
+routes used as backend-for-frontend layers for integration with internal services.
+
+\toollogo{figures/logos/Nextjs-logo.png}{Next.js}
+
+\textbf{Radix UI / Material UI / Tailwind CSS}
+
+These UI libraries are used to accelerate frontend implementation with reusable components, theming,
+and utility-first styling for consistent and responsive interfaces.
+
+\toollogotriple
+  {figures/logos/radix ui logo.png}{Radix UI}
+  {figures/logos/mui logo.png}{Material UI}
+  {figures/logos/tailwind logo.png}{Tailwind CSS}
+
+\textbf{Clerk}
+
+Clerk is used for authentication and user identity management, including secure sign-in flows and
+session handling across the platform portals and protected backend endpoints.
+
+\toollogo{figures/logos/clerk logo.png}{Clerk}
+
+\textbf{Stripe JS + Python}
+
+Stripe SDKs are used for subscription billing workflows, including checkout session handling, payment
+integration, and secure webhook verification in backend services.
+
+\toollogo{figures/logos/stripe logo.png}{Stripe}
+
+\subsection{Programming Languages}
+
+\begin{itemize}
+  \item \textbf{Python 3.12} for AR-API and Agentic Helper.
+  \item \textbf{Python 3.8} for Videos Search API (compatibility with the OpenSearch Python client).
+  \item \textbf{TypeScript} (Node.js 20 LTS) for both Next.js portals.
+  \item \textbf{SQL} for migrations (PostgreSQL 15/16) and OpenSearch query DSL (JSON).
+\end{itemize}
+
+\subsection{Tools Used}
+
+\textbf{Cursor IDE}
+
+Cursor IDE is the main development environment used in this project. It provides an AI-assisted
+workflow for writing, refactoring, and reviewing code across the platform services.
+
+\toollogo{figures/logos/cursor ide logo.final.png}{Cursor IDE}
+
+\textbf{Docker}
+
+Docker is used to package services in isolated containers so each component runs with consistent
+runtime dependencies across development environments.
+
+\toollogo{figures/logos/Docker_Logo.png}{Docker}
+
+\textbf{Docker Compose}
+
+Docker Compose orchestrates multi-service local environments by defining and starting all required
+containers (APIs, databases, cache, and supporting services) from a single configuration.
+
+\toollogo{figures/logos/docker_compose_logo.jpeg}{Docker Compose}
+
+\textbf{Git}
+
+Git is used for distributed version control, enabling feature branching, history tracking, and safe
+collaboration during iterative development.
+
+\toollogo{figures/logos/Git-logo.png}{Git}
+
+\textbf{Postman}
+
+Postman is used to test and validate REST API endpoints by building requests, inspecting responses,
+and organizing reusable API collections.
+
+\toollogo{figures/logos/Postman_logo.png}{Postman}
+
+\textbf{Qdrant Cloud Console}
+
+Qdrant Cloud Console is used to inspect vector collections, monitor indexed embeddings, and verify
+semantic retrieval data used by the chatbot pipeline.
+
+\toollogo{figures/logos/qdrant cloud console logo.png}{Qdrant Cloud Console}
+
+\textbf{OpenSearch Dashboards}
+
+OpenSearch Dashboards provides a web interface to explore indexed video data, validate mappings, and
+analyze search behavior in the OpenSearch engine.
+
+\toollogo{figures/logos/opensearch logo.png}{OpenSearch Dashboards}
+
+%% ─── 2.7 ─────────────────────────────────────────────────────────────────────
+\section{General Architecture}
+
+The BVIRAL Platform uses a \textbf{microservices architecture}. Each service is independently
+deployable, has a defined API contract, and owns its own data store. Services communicate over
+HTTP REST, and there is no shared database.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+  fe/.style={draw=blue!60!black, fill=blue!10, rounded corners=4pt,
+             minimum width=3.3cm, minimum height=0.85cm,
+             font=\small\bfseries, align=center},
+  api/.style={draw=teal!60!black, fill=teal!10, rounded corners=4pt,
+              minimum width=3.3cm, minimum height=0.85cm,
+              font=\small\bfseries, align=center},
+  db/.style={draw=violet!60, fill=violet!8, rounded corners=4pt,
+             minimum width=2.9cm, minimum height=0.75cm,
+             font=\small, align=center},
+  ext/.style={draw=gray!55, fill=gray!8, rounded corners=4pt,
+              minimum width=2.6cm, minimum height=0.75cm,
+              font=\small, align=center},
+  arr/.style={->, >=Stealth, thick}
+]
+%% Frontends
+\node[fe]  (vp)  at (-4.2, 4) {Video Search\\Portal\\(Next.js 15)};
+\node[fe]  (arp) at ( 4.2, 4) {Authentic Rights\\Portal\\(Next.js 16)};
+
+%% APIs
+\node[api] (arapi) at ( 4.2, 1.5) {AR-API\\(FastAPI :8001)};
+\node[api] (vsapi) at ( 0,   1.5) {Videos Search API\\(Flask :5000)};
+\node[api] (ahai)  at (-4.2, 1.5) {Agentic Helper\\(FastAPI :8003)};
+
+%% Data stores
+\node[db] (pg1) at ( 4.2,-0.6) {PostgreSQL\\(AR DB :5433)};
+\node[db] (os)  at ( 0,  -0.6) {OpenSearch\\(:9200)};
+\node[db] (pg2) at (-4.2,-0.6) {Qdrant Cloud\\(:6333)};
+\node[db] (rd)  at ( 7.0,-0.6) {Redis\\(:6379)};
+
+%% External
+\node[ext] (stripe) at ( 7.0, 1.5) {Stripe};
+\node[ext] (clerk)  at ( 7.0, 4.0) {Clerk};
+\node[ext] (dam)    at ( 4.2,-2.3) {DAM Provider};
+\node[ext] (oai)    at (-7.0, 1.5) {OpenAI\\API};
+
+%% Arrows – frontends to APIs
+\draw[arr] (vp)  -- (vsapi);
+\draw[arr] (vp)  -- (ahai);
+\draw[arr] (arp) -- (arapi);
+\draw[arr] (arp) -- (ahai);
+
+%% Agentic helper to video search
+\draw[arr] (ahai) -- (vsapi);
+
+%% APIs to data stores
+\draw[arr] (arapi) -- (pg1);
+\draw[arr] (arapi) -- (rd);
+\draw[arr] (vsapi) -- (os);
+\draw[arr] (ahai)  -- (pg2);
+
+%% External services
+\draw[arr] (arapi) -- (stripe);
+\draw[arr] (arapi) -- (clerk);
+\draw[arr] (arapi) -- (dam);
+\draw[arr] (ahai)  -- (oai);
+
+\end{tikzpicture}
+\caption{BVIRAL Platform — global microservices architecture}
+\label{fig:arch_global}
+\end{figure}
+
+%% ─── 2.8 ─────────────────────────────────────────────────────────────────────
+\section{Static Design: Class Diagram}
+
+\subsection{AR-API PostgreSQL Schema}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+  tbl/.style={draw=blue!55!black, fill=blue!6, rounded corners=4pt,
+              font=\fontsize{7}{8}\selectfont, inner sep=5pt},
+  rel/.style={->, >=Stealth, thick, blue!50}
+]
+%% Tables
+\node[tbl, text width=3.3cm] (users) at (0,0.2) {
+  \textbf{users}\\[2pt]\hrule\vspace{3pt}
+  \textit{id}, clerk\_id, email\\
+  name, account\_status\\
+  renewal\_failed\_at\\
+  media\_access\_suspended
+};
+\node[tbl, text width=3.3cm] (channels) at (4.6,2.7) {
+  \textbf{channels}\\[2pt]\hrule\vspace{3pt}
+  \textit{id}, user\_id (FK)\\
+  platform, url\\
+  username, follower\_count\\
+  verification\_status
+};
+\node[tbl, text width=3.3cm] (payments) at (4.6,0.2) {
+  \textbf{payments}\\[2pt]\hrule\vspace{3pt}
+  \textit{id}, user\_id (FK)\\
+  stripe\_subscription\_id\\
+  status, plan, amount\\
+  signature, signed\_at, metadata
+};
+\node[tbl, text width=3.3cm] (onb) at (-4.6,2.7) {
+  \textbf{onboarding\_sessions}\\[2pt]\hrule\vspace{3pt}
+  \textit{id} (UUID), email\\
+  payment\_email, price\_id\\
+  step (enum), session\_details\\
+  custom\_quote\_submitted\\
+  payment\_received
+};
+\node[tbl, text width=3.4cm] (emails) at (-4.6,0.2) {
+  \textbf{onboarding\_emails}\\[2pt]\hrule\vspace{3pt}
+  \textit{id}, onboarding\_session\_id (FK)\\
+  recipient\_email, email\_code\\
+  status, sent\_at\\
+  metadata (JSONB)
+};
+\node[tbl, text width=3.3cm] (pl) at (-4.6,-2.3) {
+  \textbf{playlists}\\[2pt]\hrule\vspace{3pt}
+  \textit{id}, user\_id (FK)\\
+  title, description\\
+  created\_at, updated\_at
+};
+\node[tbl, text width=3.3cm] (plv) at (0,-2.3) {
+  \textbf{playlist\_videos}\\[2pt]\hrule\vspace{3pt}
+  \textit{id}, playlist\_id (FK)\\
+  video\_id, position\\
+  created\_at
+};
+\node[tbl, text width=3.3cm] (conv) at (4.6,-2.3) {
+  \textbf{conversations}\\[2pt]\hrule\vspace{3pt}
+  \textit{id}, user\_id (FK)\\
+  title, created\_at\\
+  updated\_at
+};
+\node[tbl, text width=3.3cm] (msg) at (0,-4.8) {
+  \textbf{conversation\_messages}\\[2pt]\hrule\vspace{3pt}
+  \textit{id}, conversation\_id (FK)\\
+  role, content\\
+  created\_at
+};
+\node[tbl, text width=3.3cm] (sub) at (4.6,-4.8) {
+  \textbf{video\_submissions}\\[2pt]\hrule\vspace{3pt}
+  \textit{id}, user\_id (FK)\\
+  video\_url, status (enum)\\
+  submitted\_at
+};
+%% Relations
+\draw[rel] (users.east)  -- (channels.west);
+\draw[rel] (users.east)  -- (payments.west);
+\draw[rel] (users.west)  -- (onb.east);
+\draw[rel] (onb.south)   -- (emails.north);
+\draw[rel] (users.south west) -- (pl.north);
+\draw[rel] (pl.east)     -- (plv.west);
+\draw[rel] (users.south east) -- (conv.north);
+\draw[rel] (conv.west)   -- (msg.east);
+\draw[rel] (users.south) -- (sub.north);
+\end{tikzpicture}
+\caption{AR-API PostgreSQL entity-relationship diagram}
+\label{fig:er_arapi}
+\end{figure}
+
+\section*{Conclusion}
+\addcontentsline{toc}{section}{Conclusion}
+
+Sprint 0 produced the actors, functional and non-functional requirements, a prioritized product
+backlog, the selected work tools, and the general architecture together with its static view.
+These artifacts form the shared foundation for all implementation sprints. The
+next chapter starts Sprint 1 with authentication, onboarding, and Stripe payments.

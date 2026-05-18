@@ -11,11 +11,23 @@ export default function SearchPage() {
 	const searchParams = useSearchParams();
 	const category = searchParams.get('category') || '';
 	const count = searchParams.get('count') || '';
-	const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '');
-	console.log(category);
+	const initialQuery = searchParams.get('q') || '';
+	const [inputQuery, setInputQuery] = useState(initialQuery);
+	const [committedQuery, setCommittedQuery] = useState(initialQuery);
+
+	const normalizeQuery = (value: string) =>
+		value
+			.trim()
+			.replace(/\s+/g, ' ');
+
+	const commitQuery = (value: string) => {
+		const normalized = normalizeQuery(value);
+		setCommittedQuery((prev) => (prev === normalized ? prev : normalized));
+	};
+
 	const handleSearchSubmit = (e: React.FormEvent) => {
 		e.preventDefault();
-		// Optionally, update the URL or trigger re-fetch in SearchResults
+		commitQuery(inputQuery);
 	};
 
 	return (
@@ -32,8 +44,11 @@ export default function SearchPage() {
 							<Input
 								type='search'
 								placeholder='Search videos...'
-								value={searchQuery}
-								onChange={(e) => setSearchQuery(e.target.value)}
+								value={inputQuery}
+								onChange={(e) => {
+									const nextValue = e.target.value;
+									setInputQuery(nextValue);
+								}}
 								className='pl-10 h-12 text-base'
 							/>
 						</div>
@@ -46,7 +61,11 @@ export default function SearchPage() {
 
 			{/* Results */}
 			<div className='container mx-auto px-4 py-8'>
-				<SearchResults query={searchQuery} category={category} count={count} />
+				<SearchResults
+					query={committedQuery}
+					category={category}
+					count={count}
+				/>
 			</div>
 		</div>
 	);

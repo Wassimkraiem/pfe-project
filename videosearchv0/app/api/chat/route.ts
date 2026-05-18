@@ -13,14 +13,20 @@ const CHAT_API_KEY =
 export async function POST(request: NextRequest) {
 	try {
 		const body = await request.json();
+		const userId =
+			typeof body?.user_id === 'string' && body.user_id.trim().length > 0
+				? body.user_id
+				: 'web-anonymous';
 
 		const response = await fetch(CHAT_API_URL, {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
 				'x-api-key': CHAT_API_KEY,
+				'x-user-id': userId,
 			},
 			body: JSON.stringify(body),
+			cache: 'no-store',
 		});
 
 		const text = await response.text();

@@ -1,0 +1,442 @@
+\chapter{Sprint 1 — Authentication, Onboarding and Payments}
+
+\section*{Introduction}
+\addcontentsline{toc}{section}{Introduction}
+
+Sprint 1 delivers the foundation of the Authentic Rights Portal: Clerk-backed authentication,
+the multi-step onboarding state machine, Stripe embedded checkout with digital agreement signing,
+and the Celery-driven notification pipeline. The main service produced during this sprint is the
+\textbf{AR-API} (FastAPI, PostgreSQL, Redis, Celery).
+
+%% ─── Sprint Backlog ─────────────────────────────────────────────────────────
+\section{Sprint Backlog}
+
+\begin{table}[H]
+\centering
+\caption{Sprint 1 Backlog}
+\label{tab:sprint1_backlog}
+\begin{tabularx}{\textwidth}{clXcc}
+\toprule
+\textbf{ID} & \textbf{Story} & \textbf{Task} & \textbf{Effort (d)} & \textbf{Prio.} \\
+\midrule
+T1.1 & US-01 & Clerk JWT verification middleware in AR-API         & 1 & M \\
+T1.2 & US-02 & Channels domain model, Marshmallow-like schemas     & 1 & M \\
+T1.3 & US-02 & SMS Scraper integration for follower counts         & 1 & M \\
+T1.4 & US-03 & Custom-quote branch (\textgreater 2M followers)      & 1 & S \\
+T1.5 & US-04 & Onboarding state machine + Alembic migrations       & 2 & M \\
+T1.6 & US-04 & Stripe embedded checkout session endpoint           & 1 & M \\
+T1.7 & US-04 & Digital service agreement signing + PDF generation  & 1 & M \\
+T1.8 & US-04 & Stripe webhook with HMAC verification               & 1 & M \\
+T1.9 & US-05 & Celery email task (MJML + signed PDF attachment)    & 1 & M \\
+T1.10 & US-05 & Slack Block Kit notification task                  & 0.5 & S \\
+T1.11 & US-06 & Dashboard endpoints (/me, renewal, billing portal) & 1 & M \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+%% ─── Design ─────────────────────────────────────────────────────────────────
+\section{Design}
+
+\subsection{Use Case Diagram for Sprint 1}
+
+Figure~\ref{fig:uc_onboarding} details the onboarding process, the most complex multi-step flow
+in the platform. A custom quote branch applies when the creator's channel exceeds 2M followers
+or uses an unsupported platform.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{\detokenize{diagrams/sprint 1 use case.png}}
+\caption{Sprint 1 use-case diagram — onboarding, authentication and payments}
+\label{fig:uc_onboarding}
+\end{figure}
+
+\subsection{Class Diagram for Sprint 1}
+
+Figure~\ref{fig:cd_sprint1} shows the AR-API domain model for Sprint 1. The core entities are
+\texttt{Users}, \texttt{Channels}, \texttt{OnboardingSessions}, \texttt{OnboardingEmails},
+and \texttt{Payments}, together with their enumeration types.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{\detokenize{diagrams/sprint 1 class diagram.png}}
+\caption{Sprint 1 class diagram — AR-API domain model (authentication, onboarding and payments)}
+\label{fig:cd_sprint1}
+\end{figure}
+
+\subsection{Sequence Diagrams}
+
+\subsubsection{Onboarding Completion Sequence}
+
+Figure~\ref{fig:seq_onboarding} traces the path from channel submission to dashboard access and
+shows how AR-API, Stripe, and Celery coordinate during onboarding.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[x=1cm, y=1cm, font=\fontsize{7}{8}\selectfont]
+%% Participants (x positions: 0, 2.8, 5.6, 8.4, 11.2)
+\node[sdFE]   (pUser)   at ( 0,   0) {User};
+\node[sdFE]   (pPortal) at ( 2.8, 0) {AR Portal};
+\node[sdBE]   (pAPI)    at ( 5.6, 0) {AR-API};
+\node[sdExt]  (pStripe) at ( 8.4, 0) {Stripe};
+\node[sdWork] (pCelery) at (11.2, 0) {Celery};
+
+%% Lifelines
+\foreach \x in {0, 2.8, 5.6, 8.4, 11.2}
+  \draw[dashed, gray!50] (\x,-0.3) -- (\x,-13.8);
+
+%% Messages
+\draw[sdmsg] (0,-0.85)  -- node[above, pos=0.5]{add channels + URLs} (5.6,-0.85);
+\draw[sdmsg] (5.6,-1.57) -- node[above, pos=0.5]{follower lookup (SMS API)} (8.4,-1.57);
+\draw[sdret] (8.4,-2.29) -- node[above, pos=0.5]{follower counts} (5.6,-2.29);
+\draw[sdret] (5.6,-3.01) -- node[above, pos=0.5]{session\_id + plan options} (2.8,-3.01);
+\draw[sdmsg] (0,-3.73)   -- node[above, pos=0.5]{select plan, sign agreement} (2.8,-3.73);
+\draw[sdmsg] (2.8,-4.45) -- node[above, pos=0.5]{POST /checkout-session} (5.6,-4.45);
+\draw[sdmsg] (5.6,-5.17) -- node[above, pos=0.5]{create PaymentIntent} (8.4,-5.17);
+\draw[sdret] (8.4,-5.89) -- node[above, pos=0.5]{\{client\_secret\}} (5.6,-5.89);
+\draw[sdret] (5.6,-6.61) -- node[above, pos=0.5]{\{client\_secret, session\_id\}} (2.8,-6.61);
+\draw[sdmsg] (0,-7.33)   -- node[above, pos=0.5]{complete payment} (8.4,-7.33);
+\draw[sdmsg] (8.4,-8.05) -- node[above, pos=0.5]{POST /webhooks (checkout.session.completed)} (5.6,-8.05);
+\draw[sdmsg] (5.6,-8.77) -- node[above, pos=0.5]{enqueue email + signed-PDF task} (11.2,-8.77);
+\draw[sdret] (5.6,-9.49) -- node[above, pos=0.5]{redirect to /complete-setup} (2.8,-9.49);
+\draw[sdmsg] (0,-10.21)  -- node[above, pos=0.5]{submit account details} (2.8,-10.21);
+\draw[sdmsg] (2.8,-10.93)-- node[above, pos=0.5]{POST /complete-onboarding} (5.6,-10.93);
+\draw[sdmsg] (5.6,-11.65)-- node[above, pos=0.5]{enqueue media-access provisioning task} (11.2,-11.65);
+\draw[sdret] (5.6,-12.37)-- node[above, pos=0.5]{200 OK \{user\_id\}} (2.8,-12.37);
+\draw[sdret] (2.8,-13.09)-- node[above, pos=0.5]{redirect to dashboard} (0,-13.09);
+
+%% Celery side-effect note
+\node[sdnote] at (13.0,-9.13) {Email + signed\\PDF delivered};
+\draw[->, dashed, gray!50] (11.2,-8.77) -- (12.4,-9.13);
+
+\end{tikzpicture}
+\caption{Onboarding completion sequence diagram}
+\label{fig:seq_onboarding}
+\end{figure}
+
+\subsubsection{Stripe Payment Handling Sequence}
+
+Figure~\ref{fig:seq_payment} focuses on Stripe integration: how embedded checkout is created, how
+the HMAC-verified webhook triggers the post-payment pipeline, and how race conditions from
+duplicate webhook events are avoided.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[x=1cm, y=1cm, font=\fontsize{7}{8}\selectfont]
+%% Participants
+\node[sdFE]   (pUser)    at ( 0,   0) {User\\(browser)};
+\node[sdFE]   (pPortal)  at ( 2.8, 0) {AR Portal};
+\node[sdBE]   (pAPI)     at ( 5.6, 0) {AR-API};
+\node[sdExt]  (pStripe)  at ( 8.4, 0) {Stripe API};
+\node[sdWork] (pCelery)  at (11.2, 0) {Celery};
+
+%% Lifelines
+\foreach \x in {0, 2.8, 5.6, 8.4, 11.2}
+  \draw[dashed, gray!50] (\x,-0.3) -- (\x,-14.5);
+
+%% Phase 1 — Checkout creation
+\node[sdfrag] at (-1.0,-1.0) {create checkout};
+\draw[sdmsg] (2.8,-0.85) -- node[above, pos=0.5]{POST /checkout-session \{price\_id, session\_id\}} (5.6,-0.85);
+\draw[sdmsg] (5.6,-1.57) -- node[above, pos=0.5]{stripe.checkout.sessions.create(\ldots)} (8.4,-1.57);
+\draw[sdret] (8.4,-2.29) -- node[above, pos=0.5]{\{id, client\_secret, url\}} (5.6,-2.29);
+\draw[sdret] (5.6,-3.01) -- node[above, pos=0.5]{\{client\_secret\}} (2.8,-3.01);
+\draw[sdret] (2.8,-3.73) -- node[above, pos=0.5]{render Stripe Elements iframe} (0,-3.73);
+
+%% Phase 2 — Payment
+\node[sdfrag] at (-1.0,-4.7) {payment};
+\draw[sdmsg] (0,-4.45)   -- node[above, pos=0.5]{enter card details} (8.4,-4.45);
+\draw[sdmsg] (8.4,-5.17) -- node[above, pos=0.5]{tokenize + charge card} (8.4,-5.17);
+\draw[sdret] (8.4,-5.89) -- node[above, pos=0.5]{payment\_intent.succeeded} (0,-5.89);
+
+%% Phase 3 — Webhook
+\node[sdfrag] at (-1.0,-6.6) {webhook};
+\draw[sdmsg] (8.4,-6.61) -- node[above, pos=0.5]{POST /webhooks (checkout.session.completed)} (5.6,-6.61);
+%% self: verify HMAC
+\draw[sdmsg] (5.6,-7.33) to[out=-30,in=30] node[right, pos=0.5]{verify HMAC signature} (5.6,-8.05);
+\draw[sdmsg] (5.6,-8.77) to[out=-30,in=30] node[right, pos=0.5]{skip if billing\_reason = subscription\_create} (5.6,-9.49);
+\draw[sdmsg] (5.6,-10.21)-- node[above, pos=0.5]{mark payment\_received = true, update step} (5.6,-10.21);
+
+%% Phase 4 — Post-payment
+\node[sdfrag] at (-1.0,-11.1) {post-payment};
+\draw[sdmsg] (5.6,-10.93)-- node[above, pos=0.5]{enqueue send\_confirmation\_email task} (11.2,-10.93);
+\draw[sdmsg] (5.6,-11.65)-- node[above, pos=0.5]{redirect /complete-setup to portal} (2.8,-11.65);
+\draw[sdmsg] (2.8,-12.37)-- node[above, pos=0.5]{POST /complete-onboarding} (5.6,-12.37);
+\draw[sdmsg] (5.6,-13.09)-- node[above, pos=0.5]{enqueue access\_provision task} (11.2,-13.09);
+\draw[sdret] (5.6,-13.81)-- node[above, pos=0.5]{200 OK} (2.8,-13.81);
+
+%% Celery notes
+\node[sdnote] at (13.4,-11.29) {Email + signed\\PDF sent};
+\draw[->, dashed, gray!50] (11.2,-10.93) -- (12.6,-11.29);
+\node[sdnote] at (13.4,-13.45) {Media access\\provisioned};
+\draw[->, dashed, gray!50] (11.2,-13.09) -- (12.6,-13.45);
+
+\end{tikzpicture}
+\caption{Stripe payment handling sequence diagram}
+\label{fig:seq_payment}
+\end{figure}
+
+\subsubsection{Notification Pipeline Sequence}
+
+Figure~\ref{fig:seq_notifications} isolates the asynchronous notification pipeline. After critical
+onboarding and payment events, AR-API enqueues Celery tasks. Workers send Slack notifications and
+transactional emails, then persist send status in \texttt{onboarding\_emails}.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[x=1cm, y=1cm, font=\fontsize{7}{8}\selectfont]
+%% Participants
+\node[sdBE]   (pAPI)    at ( 0.0, 0) {AR-API};
+\node[sdData] (pRedis)  at ( 2.8, 0) {Redis\\Broker};
+\node[sdWork] (pCelery) at ( 5.6, 0) {Celery\\Worker};
+\node[sdExt]  (pSlack)  at ( 8.4, 0) {Slack\\Webhook};
+\node[sdExt]  (pEmail)  at (11.2, 0) {Email\\Provider};
+\node[sdData] (pDB)     at (14.0, 0) {PostgreSQL};
+
+%% Lifelines
+\foreach \x in {0.0, 2.8, 5.6, 8.4, 11.2, 14.0}
+  \draw[dashed, gray!50] (\x,-0.3) -- (\x,-10.7);
+
+%% Trigger and enqueue
+\draw[sdmsg] (0.0,-0.85) -- node[above, pos=0.5]{payment/custom-quote event} (0.0,-0.85);
+\draw[sdmsg] (0.0,-1.57) -- node[above, pos=0.5]{enqueue slack + email tasks} (2.8,-1.57);
+\draw[sdret] (2.8,-2.29) -- node[above, pos=0.5]{task ids} (0.0,-2.29);
+
+%% Worker consumes and executes
+\draw[sdmsg] (2.8,-3.01) -- node[above, pos=0.5]{deliver tasks} (5.6,-3.01);
+\draw[sdmsg] (5.6,-3.73) -- node[above, pos=0.5]{POST Block Kit payload} (8.4,-3.73);
+\draw[sdret] (8.4,-4.45) -- node[above, pos=0.5]{200 OK} (5.6,-4.45);
+\draw[sdmsg] (5.6,-5.17) -- node[above, pos=0.5]{send transactional email (+ PDF)} (11.2,-5.17);
+\draw[sdret] (11.2,-5.89) -- node[above, pos=0.5]{accepted / provider id} (5.6,-5.89);
+
+%% Tracking
+\draw[sdmsg] (5.6,-6.61) -- node[above, pos=0.5]{INSERT onboarding\_emails row} (14.0,-6.61);
+\draw[sdret] (14.0,-7.33) -- node[above, pos=0.5]{status=SENT, metadata} (5.6,-7.33);
+\draw[sdmsg] (5.6,-8.05) to[out=-30,in=30] node[right, pos=0.5]{retry on transient failures} (5.6,-8.77);
+\draw[sdret] (5.6,-9.49) -- node[above, pos=0.5]{final state persisted} (0.0,-9.49);
+
+\node[sdnote] at (11.2,-9.8) {Celery autoretry\\with backoff\\(network errors)};
+\draw[->, dashed, gray!50] (6.0,-8.6) -- (10.2,-9.6);
+
+\end{tikzpicture}
+\caption{Slack and email notifications via Celery tasks}
+\label{fig:seq_notifications}
+\end{figure}
+
+\subsubsection{Onboarding Email Tracking Sequence}
+
+Figure~\ref{fig:seq_onb_email_tracking} focuses on \texttt{onboarding\_emails} persistence, used
+for reminder throttling and idempotency (for example, preventing duplicate payment confirmations).
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[x=1cm, y=1cm, font=\fontsize{7}{8}\selectfont]
+%% Participants
+\node[sdWork] (pCelery) at ( 0.0, 0) {Celery\\email task};
+\node[sdData] (pDB)     at ( 3.5, 0) {PostgreSQL};
+\node[sdExt]  (pEmail)  at ( 7.0, 0) {Email\\Provider};
+\node[sdBE]   (pAPI)    at (10.5, 0) {AR-API\\queries};
+
+%% Lifelines
+\foreach \x in {0.0, 3.5, 7.0, 10.5}
+  \draw[dashed, gray!50] (\x,-0.3) -- (\x,-8.9);
+
+\draw[sdmsg] (0.0,-0.85) -- node[above, pos=0.5]{check already sent?} (10.5,-0.85);
+\draw[sdmsg] (10.5,-1.57) -- node[above, pos=0.5]{SELECT by session + email\_code} (3.5,-1.57);
+\draw[sdret] (3.5,-2.29) -- node[above, pos=0.5]{none / existing row} (10.5,-2.29);
+\draw[sdret] (10.5,-3.01) -- node[above, pos=0.5]{continue or skip} (0.0,-3.01);
+\draw[sdmsg] (0.0,-3.73) -- node[above, pos=0.5]{send email} (7.0,-3.73);
+\draw[sdret] (7.0,-4.45) -- node[above, pos=0.5]{provider response} (0.0,-4.45);
+\draw[sdmsg] (0.0,-5.17) -- node[above, pos=0.5]{record\_onboarding\_email\_sent(...)} (10.5,-5.17);
+\draw[sdmsg] (10.5,-5.89) -- node[above, pos=0.5]{INSERT onboarding\_emails} (3.5,-5.89);
+\draw[sdret] (3.5,-6.61) -- node[above, pos=0.5]{id + sent\_at} (10.5,-6.61);
+\draw[sdret] (10.5,-7.33) -- node[above, pos=0.5]{tracked} (0.0,-7.33);
+
+\end{tikzpicture}
+\caption{Onboarding email persistence and idempotency flow}
+\label{fig:seq_onb_email_tracking}
+\end{figure}
+
+%% ─── Implementation ────────────────────────────────────────────────────────
+\section{Implementation}
+
+\subsection{FastAPI Layered Module Structure}
+
+The AR-API is a \textbf{layered FastAPI application} using a domain-driven module structure.
+Each domain module follows four layers:
+
+\begin{center}
+\texttt{router.py} $\rightarrow$ \texttt{services.py} $\rightarrow$ \texttt{models.py} / \texttt{schemas.py}
+\end{center}
+
+\begin{table}[H]
+\centering
+\caption{AR-API domain modules}
+\begin{tabularx}{\textwidth}{llX}
+\toprule
+\textbf{Module} & \textbf{Route prefix} & \textbf{Responsibility} \\
+\midrule
+\texttt{auth/}               & \texttt{/auth}                  & Clerk JWT verification, sign-in \\
+\texttt{user/}               & \texttt{/users}                 & User profiles, \texttt{/me} overview \\
+\texttt{channel/}            & \texttt{/channels}              & Social media channel CRUD \\
+\texttt{onboarding\_session/}& \texttt{/onboarding-sessions}   & Onboarding state machine \\
+\texttt{payment/}            & \texttt{/payments}, \texttt{/webhooks} & Stripe subscriptions, renewal, portal URL \\
+\texttt{recommendation/}     & \texttt{/recommendations}       & Search/click event ingestion and personalized feed generation \\
+\texttt{custom\_quote/}      & \texttt{/custom-quotes}         & Enterprise pricing negotiation \\
+\texttt{email/}              & (internal Celery tasks)         & MJML transactional emails with PDF attachments \\
+\texttt{slack/}              & (internal Celery tasks)         & Slack Block Kit notifications \\
+\texttt{asset\_access/}      & \texttt{/asset-access}          & Media library access provisioning \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Configuration uses \textbf{Pydantic v2} strict-mode schemas, \textbf{SQLAlchemy 2.0 async} with
+the \textbf{asyncpg} driver, \textbf{Alembic} for auto-generated schema migrations, and
+\textbf{Uvicorn} (development) or \textbf{Gunicorn + Uvicorn workers} (production).
+
+\subsection{Clerk Authentication}
+
+Clerk issues signed JWTs that the AR-API validates on every request. The \texttt{/auth} router
+exchanges the Clerk token for a user session, loads or creates the matching \texttt{users} row,
+and attaches it to the FastAPI dependency tree for downstream handlers.
+
+\subsection{Onboarding State Machine and Channel Submission}
+
+The onboarding flow is backed by \texttt{onboarding\_sessions.step} (enum). Each transition is
+validated server-side. Channel submission calls an external SMS Scraper API to retrieve follower
+counts; when any channel exceeds 2M followers the custom-quote branch is activated and reviewed
+by an administrator before Stripe checkout is unlocked.
+
+\subsubsection{Portal UI Flow (Authentication + Branching Onboarding)}
+
+The implemented UI flow in the Authentic Rights Portal is:
+\begin{enumerate}[label=\textbf{Step \arabic*:}, leftmargin=2.8cm]
+  \item Enter email (\texttt{ar email enter page.png}).
+  \item Add channel and run eligibility check (\texttt{channel submission (step 2).png}).
+  \item If custom quote is required: submit quote request (\texttt{ar custom quote submition.png}),
+        then land on submitted confirmation (\texttt{ar custom quote submited.png}).
+  \item If custom quote is not required: open payment details and sign agreement
+        (\texttt{ar payment details page.png} and \texttt{ar licencing agrement and sign page.png}),
+        then complete embedded Stripe checkout (\texttt{mbedded Stripe checkou.png}).
+  \item Continue to account creation (\texttt{ar account creation page.png}).
+  \item Finish on login page (\texttt{ar login page.png}).
+\end{enumerate}
+
+\begin{figure}[H]
+\centering
+\begin{subfigure}[t]{0.92\textwidth}
+  \centering
+  \includegraphics[width=\textwidth]{\detokenize{figures/authflow/ar email enter page.png}}
+  \caption{Step 1 - Email entry}
+\end{subfigure}
+\vspace{0.6em}
+\begin{subfigure}[t]{0.92\textwidth}
+  \centering
+  \includegraphics[width=\textwidth]{\detokenize{figures/authflow/channel submission (step 2).png}}
+  \caption{Step 2 - Channel submission and eligibility check}
+\end{subfigure}
+\caption{Common start of the AR onboarding flow}
+\label{fig:ar_flow_common_start}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\begin{subfigure}[t]{0.92\textwidth}
+  \centering
+  \includegraphics[width=\textwidth]{\detokenize{figures/authflow/ar custom quote submition.png}}
+  \caption{Step 3 (Yes branch) - Custom quote submission}
+\end{subfigure}
+\vspace{0.6em}
+\begin{subfigure}[t]{0.92\textwidth}
+  \centering
+  \includegraphics[width=\textwidth]{\detokenize{figures/authflow/ar custom quote submited.png}}
+  \caption{Custom quote submitted confirmation}
+\end{subfigure}
+\caption{Custom quote branch when channel requires manual pricing}
+\label{fig:ar_flow_custom_quote_branch}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\begin{subfigure}[t]{0.92\textwidth}
+  \centering
+  \includegraphics[width=\textwidth]{\detokenize{figures/authflow/ar signed step 3 page.png}}
+  \caption{Step 3 (No branch) - Signed onboarding step}
+\end{subfigure}
+\vspace{0.6em}
+\begin{subfigure}[t]{0.92\textwidth}
+  \centering
+  \includegraphics[width=\textwidth]{\detokenize{figures/authflow/ar licencing agrement and sign page.png}}
+  \caption{Agreement signature before payment}
+\end{subfigure}
+
+\vspace{0.5em}
+
+\begin{subfigure}[t]{0.92\textwidth}
+  \centering
+  \includegraphics[width=\textwidth]{\detokenize{figures/authflow/mbedded Stripe checkou.png}}
+  \caption{Embedded Stripe checkout}
+\end{subfigure}
+\vspace{0.6em}
+\begin{subfigure}[t]{0.92\textwidth}
+  \centering
+  \includegraphics[width=\textwidth]{\detokenize{figures/authflow/ar account creation page.png}}
+  \caption{Account creation after payment}
+\end{subfigure}
+
+\vspace{0.5em}
+
+\begin{subfigure}[t]{0.92\textwidth}
+  \centering
+  \includegraphics[width=\textwidth]{\detokenize{figures/authflow/ar login page.png}}
+  \caption{Final login page}
+\end{subfigure}
+\caption{Standard payment branch (no custom quote required)}
+\label{fig:ar_flow_payment_branch}
+\end{figure}
+
+\subsection{Stripe Embedded Checkout and Webhook Security}
+
+The \texttt{payment} module creates \texttt{checkout.session} objects server-side and returns the
+\texttt{client\_secret} so the portal can render \textbf{Stripe Elements}. Webhooks land on
+\texttt{/webhooks}; each payload's HMAC signature is verified before handling. Duplicate events
+(notably \texttt{invoice.payment\_succeeded} with \texttt{billing\_reason=subscription\_create})
+are explicitly skipped to avoid double-processing.
+
+\subsection{Celery Notifications Pipeline}
+
+\textbf{Celery} handles all slow side effects asynchronously, decoupled from the HTTP response:
+
+\begin{itemize}
+  \item Transactional email delivery (MJML templates compiled to HTML, PDF attachments generated
+    via \texttt{pypdf} + \texttt{reportlab}).
+  \item Media library access provisioning.
+  \item Pre-payment and account-setup reminder scheduling (periodic tasks).
+  \item Slack Block Kit notification delivery.
+\end{itemize}
+
+All tasks use \texttt{autoretry\_for=(ConnectionError, TimeoutError, OSError)} with exponential
+backoff (max 600\,s, up to 5 retries). Every send is persisted in \texttt{onboarding\_emails} for
+idempotency and reminder throttling.
+
+\subsection{Delivered Interfaces}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.82\textwidth]{\detokenize{figures/authflow/ar login page.png}}
+\caption{Authentic Rights Portal — login page after account creation}
+\label{fig:screen_ar_login}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.97\textwidth]{\detokenize{figures/ar/ar payment details page.png}}
+\caption{Authentic Rights Portal — payment details and plan confirmation}
+\label{fig:screen_ar_payment_details}
+\end{figure}
+
+\section*{Conclusion}
+\addcontentsline{toc}{section}{Conclusion}
+
+Sprint 1 delivered a production-ready onboarding funnel: Clerk authentication, channel analysis,
+custom-quote routing, signed Stripe checkout, and the Celery notification pipeline. The AR-API
+layering, Alembic-managed schema, and idempotent email tracking make this foundation safe to
+extend in later sprints. The next sprint focuses on the Videos Search API and keyword search.

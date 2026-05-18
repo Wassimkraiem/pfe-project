@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
-from pathlib import Path
+import re
 from typing import Any, Literal
 
 from langchain_core.messages import AIMessage, HumanMessage
@@ -17,14 +17,58 @@ from app.core.config import settings
 from app.tools import ALL_VIDEO_TOOLS
 
 logger = logging.getLogger(__name__)
-
-_VIDEO_SEARCH_PROMPT_FILE = Path("data/prompts/video_search_system_prompt.txt")
+_NUMBER_WORDS = {
+    "one": 1,
+    "two": 2,
+    "three": 3,
+    "four": 4,
+    "five": 5,
+    "six": 6,
+    "seven": 7,
+    "eight": 8,
+    "nine": 9,
+    "ten": 10,
+    "eleven": 11,
+    "twelve": 12,
+    "thirteen": 13,
+    "fourteen": 14,
+    "fifteen": 15,
+    "twenty": 20,
+    "thirty": 30,
+    "forty": 40,
+    "fifty": 50,
+}
+_CATEGORY_ALIASES = {
+    "animals": "Animals",
+    "animal": "Animals",
+    "travel": "Travel",
+    "travel hotel": "Travel & Hotel",
+    "travel and hotel": "Travel & Hotel",
+    "hotel": "Travel & Hotel",
+    "gym": "Gym",
+    "workout": "Gym/Workout",
+    "gym workout": "Gym/Workout",
+    "food": "Food",
+    "comedy": "Comedy",
+    "sports": "Sports",
+    "beauty": "Beauty",
+    "fails": "Fails",
+    "weather": "Weather",
+    "feels": "Feels",
+    "feel good": "Feel good",
+    "crafty": "Crafty",
+    "diy": "DIY",
+    "boozy": "Boozy",
+    "cool": "Cool",
+}
 
 
 class VideoSearchFilterPlan(BaseModel):
     method: Literal["auto", "semantic", "filters"] = "auto"
     query: str = ""
-    k: int = Field(default=10, ge=1, le=50)
+    k: int = Field(default=10, ge=1, le=1000)
+    sort_by: Literal["relevance", "views", "duration", "newest", "oldest"] = "relevance"
+    sort_order: Literal["asc", "desc"] = "desc"
     categories: list[str] = Field(default_factory=list)
     tags: list[str] = Field(default_factory=list)
     duration_min: float | None = None
@@ -37,17 +81,6 @@ class VideoSearchFilterPlan(BaseModel):
     limit: int = Field(default=10, ge=1, le=50)
 
 
-def _load_system_prompt() -> str:
-    if _VIDEO_SEARCH_PROMPT_FILE.exists():
-        content = _VIDEO_SEARCH_PROMPT_FILE.read_text(encoding="utf-8").strip()
-        if content:
-            return content
-    return (
-        "You are a video search assistant. Help users find videos using the available tools. "
-        "Present results clearly with video titles, descriptions, and IDs."
-    )
-
-
 def build_agent_llm() -> ChatOpenAI:
     return ChatOpenAI(
         api_key=settings.openai_api_key,
@@ -56,9 +89,8 @@ def build_agent_llm() -> ChatOpenAI:
     )
 
 
-def build_video_search_agent(llm: ChatOpenAI):
+def build_video_search_agent(llm: ChatOpenAI, system_prompt: str):
     """Build a LangGraph ReAct agent with video search tools."""
-    system_prompt = _load_system_prompt()
     return create_react_agent(
         model=llm,
         tools=ALL_VIDEO_TOOLS,
@@ -70,11 +102,72 @@ def _compact_list(items: list[str]) -> list[str]:
     return [item.strip() for item in items if isinstance(item, str) and item.strip()]
 
 
+def _has_ranking_intent(text: str) -> bool:
+    lowered = text.lower()
+    return any(
+        marker in lowered
+        for marker in ("top", "trending", "most viewed", "highest viewed", "viral", "popular")
+    )
+
+
+def _extract_top_k(text: str) -> int | None:
+    lowered = text.lower()
+    match_num = re.search(r"\btop\s+(\d{1,4})\b", lowered)
+    if match_num:
+        return int(match_num.group(1))
+
+    match_word = re.search(
+        r"\btop\s+(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|twenty|thirty|forty|fifty)\b",
+        lowered,
+    )
+    if match_word:
+        return _NUMBER_WORDS.get(match_word.group(1))
+    return None
+
+
+def _extract_duration_max(text: str) -> float | None:
+    lowered = text.lower()
+    patterns = (
+        r"\bunder\s+(\d{1,4})\s*(?:s|sec|secs|second|seconds)\b",
+        r"\bless than\s+(\d{1,4})\s*(?:s|sec|secs|second|seconds)\b",
+        r"\bup to\s+(\d{1,4})\s*(?:s|sec|secs|second|seconds)\b",
+        r"\bmax(?:imum)?\s+(\d{1,4})\s*(?:s|sec|secs|second|seconds)\b",
+        r"\b(\d{1,4})\s*(?:s|sec|secs|second|seconds)\s*(?:max|maximum)?\b",
+    )
+    for pattern in patterns:
+        m = re.search(pattern, lowered)
+        if m:
+            return float(int(m.group(1)))
+    return None
+
+
+def _extract_categories(text: str) -> list[str]:
+    lowered = re.sub(r"[^a-z0-9\s/&-]+", " ", text.lower())
+    found: list[str] = []
+    for alias, canonical in _CATEGORY_ALIASES.items():
+        if re.search(rf"\b{re.escape(alias)}\b", lowered):
+            if canonical not in found:
+                found.append(canonical)
+    return found
+
+
 def _normalize_filter_plan(plan: VideoSearchFilterPlan, question: str) -> dict[str, Any]:
+    ranking_intent = _has_ranking_intent(question)
+    top_k = _extract_top_k(question)
+    duration_max_from_text = _extract_duration_max(question)
+    categories_from_text = _extract_categories(question)
+
+    normalized_query = plan.query.strip() or question
+    if ranking_intent:
+        # Ranking intent should not pass a semantic phrase as free-text query.
+        normalized_query = ""
+
     normalized: dict[str, Any] = {
         "method": plan.method,
-        "query": plan.query.strip() or question,
+        "query": normalized_query,
         "k": plan.k,
+        "sort_by": plan.sort_by,
+        "sort_order": plan.sort_order,
         "offset": plan.offset,
         "limit": plan.limit,
     }
@@ -86,10 +179,21 @@ def _normalize_filter_plan(plan: VideoSearchFilterPlan, question: str) -> dict[s
         normalized["duration_min"] = plan.duration_min
     if plan.duration_max is not None:
         normalized["duration_max"] = plan.duration_max
+    if duration_max_from_text is not None and "duration_max" not in normalized:
+        normalized["duration_max"] = duration_max_from_text
     if plan.video_id and plan.video_id.strip():
         normalized["video_id"] = plan.video_id.strip()
         if normalized["method"] == "auto":
             normalized["method"] = "filters"
+    if categories_from_text and "categories" not in normalized:
+        normalized["categories"] = categories_from_text
+    if top_k is not None:
+        normalized["k"] = max(1, min(1000, int(top_k)))
+    if ranking_intent:
+        normalized["sort_by"] = "views"
+        normalized["sort_order"] = "desc"
+        if normalized["method"] == "auto":
+            normalized["method"] = "semantic"
     return normalized
 
 

@@ -312,7 +312,7 @@ export default function DashboardPage() {
             </Typography>
             <Button
               component="a"
-              href={CONTENT_PORTAL_URL}
+              href="http://localhost:3002"
               target="_blank"
               rel="noopener noreferrer"
               variant="contained"

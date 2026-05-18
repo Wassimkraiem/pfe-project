@@ -15,7 +15,7 @@ class StripeClient:
 
     async def create_checkout_session(self, payload: dict[str, Any]) -> dict[str, Any]:
         session = await stripe.checkout.Session.create_async(**payload)
-        return dict(session)
+        return self._convert_stripe_object(session)
 
     async def create_billing_portal_session(
         self, customer_id: str, return_url: str
@@ -24,7 +24,7 @@ class StripeClient:
             customer=customer_id,
             return_url=return_url,
         )
-        return dict(session)
+        return self._convert_stripe_object(session)
 
     async def retrieve_subscription(self, subscription_id: str) -> dict[str, Any]:
         subscription = await stripe.Subscription.retrieve_async(subscription_id)
@@ -32,14 +32,14 @@ class StripeClient:
 
     async def retrieve_price(self, price_id: str) -> dict[str, Any]:
         price = await stripe.Price.retrieve_async(price_id)
-        return dict(price)
+        return self._convert_stripe_object(price)
 
     async def list_customers_by_email(self, email: str, limit: int = 10) -> dict[str, Any]:
         customers = await stripe.Customer.list_async(
             email=email,
             limit=limit,
         )
-        return dict(customers)
+        return self._convert_stripe_object(customers)
 
     async def list_subscriptions_for_customer(
         self, customer_id: str, limit: int = 10
@@ -70,4 +70,4 @@ class StripeClient:
             sig_header=signature,
             secret=secret,
         )
-        return dict(event)
+        return self._convert_stripe_object(event)

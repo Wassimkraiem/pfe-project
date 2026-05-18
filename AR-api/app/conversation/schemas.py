@@ -46,3 +46,21 @@ class ConversationOutSchema(BaseModel):
 
 class ConversationDetailSchema(ConversationOutSchema):
     messages: list[MessageOutSchema] = []
+
+
+class ConversationOwnerSchema(BaseModel):
+    id: int
+    email: str
+    first_name: str
+    last_name: str
+    clerk_user_id: str | None = None
+
+
+class ConversationAdminSummarySchema(ConversationOutSchema):
+    user: ConversationOwnerSchema
+    message_count: int = 0
+    last_message_at: datetime | None = None
+
+
+class ConversationAdminDetailSchema(ConversationAdminSummarySchema):
+    messages: list[MessageOutSchema] = []

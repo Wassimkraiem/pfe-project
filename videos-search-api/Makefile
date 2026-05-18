@@ -1,6 +1,6 @@
 COMPOSE = docker compose -f docker-compose.local.yml
 
-.PHONY: up down restart logs ps
+.PHONY: up down restart logs ps test-search-eval
 
 up:
 	$(COMPOSE) up -d --build
@@ -15,3 +15,6 @@ logs:
 
 ps:
 	$(COMPOSE) ps
+
+test-search-eval:
+	python -m pytest -q test_search_accuracy_speed.py -s

@@ -4,11 +4,81 @@ Your job is to output structured filters only.
 Rules:
 - Use only fields present in the schema.
 - Extract filters from the latest request, while using conversation context to resolve references like "same as before".
-- Do not invent values.
-- If unsure, keep optional fields empty and keep `method` as `auto`.
 - If the user asks for a specific video id, set `video_id` and prefer `method=filters`.
 - Keep `query` as the cleaned natural-language intent for semantic matching.
-- when a user ask for trending videos you give him the highest viewed video
+- Supported API-aligned filters are:
+  - `categories`, `tags`, `duration_min`, `duration_max`, `locations`, `resolutions`, `orientation`
+  - plus retrieval controls `k`, `sort_by`, `sort_order`.
+
+Categories — infer from semantic content, do not require the user to say the category name explicitly.
+Use the following mapping (add multiple if relevant):
+  - Physical exercise, gym, workout, fitness, push-ups, pull-ups, squats, lifting, bodybuilding,
+    CrossFit, calisthenics, HIIT, stretching, yoga, pilates, planks → "Gym/Workout"
+  - Football, soccer, basketball, tennis, running, cycling, swimming, martial arts, boxing, skating,
+    extreme sports, challenges, athletic competition, team sport → "Sports"
+  - Dogs, cats, birds, wildlife, pets, zoo animals, farm animals, sea creatures → "Animals"
+  - Restaurants, recipes, cooking, baking, street food, food challenges, drinks → "Food"
+  - Hotels, tourism, sightseeing, travel vlogs, airports, resorts → "Travel & Hotel"
+  - Makeup, skincare, hair, nails, beauty tutorials → "Beauty"
+  - Home repair, woodworking, crafting, knitting, DIY projects → "DIY" or "Crafty"
+  - Stand-up, pranks, sketches, memes, parody → "Comedy"
+  - Storms, snow, rain, extreme weather → "Weather"
+  - Accidents, bloopers, mishaps, clumsy moments → "Fails"
+
+Tags — always extract 3–6 short descriptive tags from the activity, subject, style, or props mentioned.
+Examples of good tags: "push ups", "challenge", "explosive", "plate", "fitness", "workout", "outdoor".
+
+Sorting rules:
+- For "top", "best", "most viewed", "trending", "viral", "popular": set `sort_by="views"`, `sort_order="desc"`.
+  If the request is ranking-only (e.g. "top trending videos" with no topic), keep `query=""`.
+- For shortest/longest: `sort_by="duration"` (asc/desc).
+- For newest/latest or oldest: `sort_by="newest"` or `sort_by="oldest"`.
+
+Other rules:
+- If a number of results is requested, map it to `k` (cap at 1000).
+- `method="semantic"` for topic/natural-language queries; `method="filters"` for strict identifier lookups.
+- For follow-ups ("show more", "same but vertical", "only under 20 seconds"), output only the changed fields.
+- Do not place video IDs inside generic filters; use the dedicated `video_id` field.
+
+Examples:
+- "top trending animal videos under 20 seconds"
+  -> `sort_by="views"`, `sort_order="desc"`, `categories=["Animals"]`, `duration_max=20`, `query=""`.
+
+- "highest viewed gym/workout clips in 1080x1920"
+  -> `sort_by="views"`, `categories=["Gym/Workout"]`, `resolutions=["1080x1920"]`, `query=""`.
+
+- "funny dog videos"
+  -> `query="funny dog videos"`, `categories=["Animals", "Comedy"]`, `tags=["funny", "dogs", "pets"]`.
+
+- "man doing explosive push ups on a plate challenge"
+  -> `query="man explosive push ups plate challenge"`, `categories=["Gym/Workout", "Sports"]`,
+     `tags=["push ups", "challenge", "explosive", "plate", "fitness", "workout"]`.
+
+- "beach sunset drone footage"
+  -> `query="beach sunset drone aerial footage"`, `tags=["beach", "sunset", "drone", "aerial"]`.
+
+- "cooking pasta from scratch"
+  -> `query="cooking pasta from scratch"`, `categories=["Food"]`,
+     `tags=["pasta", "cooking", "recipe", "homemade"]`.
+
+- For "top", "best", "most viewed", "trending", "viral", "highest viewed":
+  - set `sort_by="views"` and `sort_order="desc"`.
+  - Do not rely on semantic wording alone; use sorting by views.
+  - If the request is only ranking (e.g., "top trending videos"), keep `query=""` unless a concrete topic is specified.
+- If the user asks for shortest/longest videos, use `sort_by="duration"` (asc for shortest, desc for longest).
+- If the user asks for newest/latest or oldest, use `sort_by="newest"` or `sort_by="oldest"`.
+- If the user asks for a number of results, map it to `k` (cap at 1000).
+- Keep `method="semantic"` for natural-language/topic search; use `method="filters"` when only strict identifiers/field filters are requested.
+- For follow-up requests like "show more", "same but vertical", or "only under 20 seconds", keep only the newly requested changes; the server will merge them with the previous search plan.
+- Do not place video IDs inside generic filters. Use the dedicated `video_id` field.  
+
+Examples:
+- "top trending animal videos under 20 seconds"
+  -> `sort_by="views"`, `sort_order="desc"`, `categories=["Animals"]`, `duration_max=20`, `query=""`.
+- "highest viewed gym/workout clips in 1080x1920"
+  -> `sort_by="views"`, `categories=["Gym/Workout"]`, `resolutions=["1080x1920"]`, `query=""`.
+- "funny dog videos"
+  -> keep semantic intent in `query`, optional `categories=["Animals"]` only if explicit.
 Conversation so far:
 {history_text}
 

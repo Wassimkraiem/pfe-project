@@ -14,7 +14,7 @@ from http import HTTPStatus
 from pathlib import Path
 
 from app.auth.router import router as auth_router
-from app.canto.router import router as canto_router
+from app.canto.router import library_router, router as canto_router
 from app.channel.router import router as channel_router
 from app.conversation.router import router as conversation_router
 from app.core.config import settings
@@ -24,6 +24,8 @@ from app.onboarding_session.router import router as onboarding_router
 from app.payment.router import router as payment_router
 from app.payment.webhook_router import router as webhook_router
 from app.playlist.router import router as playlist_router
+from app.favorites.router import router as favorites_router
+from app.recommendation.router import router as recommendation_router
 from app.user.router import router as user_router
 from app.video_submission.router import router as video_submission_router
 from alembic.config import Config
@@ -59,10 +61,13 @@ app.include_router(webhook_router)
 app.include_router(auth_router)
 app.include_router(user_router)
 app.include_router(canto_router)
+app.include_router(library_router)
 app.include_router(onboarding_router)
 app.include_router(channel_router)
 app.include_router(conversation_router)
 app.include_router(playlist_router)
+app.include_router(recommendation_router)
+app.include_router(favorites_router)
 app.include_router(video_submission_router)
 app.include_router(payment_router)
 

@@ -1,72 +1,86 @@
 "use client";
 
 import Link from "next/link";
-import { Mail, HelpCircle } from "lucide-react";
-import { Box, Typography, Button, Card, CardContent } from "@mui/material";
-import type { ReactNode } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { Mail, HelpCircle, CreditCard, Search } from "lucide-react";
+import {
+  Alert,
+  Box,
+  Button,
+  Card,
+  CardContent,
+  CircularProgress,
+  Stack,
+  TextField,
+  Typography,
+} from "@mui/material";
 
-type FaqItem = {
-  question: string;
-  answer: ReactNode;
-};
+import { getFaqs, searchFaqs, type FaqRecord } from "@/lib/api";
+import { faqSeeds } from "@/lib/faqSeeds";
 
-const ManageSubscriptionLink = () => (
-  <Link
-    href="/dashboard/subscription"
-    style={{
-      color: "#4D8AFF",
-      textDecoration: "underline",
-      fontWeight: 500,
-    }}
-  >
-    Manage Subscription
-  </Link>
-);
-
-const faqs: FaqItem[] = [
-  {
-    question: "How do I access the content library?",
-    answer:
-      "Click 'Open Content Portal' on the dashboard to access 90,000+ viral videos. You can search through the library using AI search, look through categories, and filter videos directly on the portal. Please be sure to only share the videos on your approved channels.",
-  },
-  {
-    question: "Can I add or remove channels from my subscription?",
-    answer:
-      "Yes! Please contact sales@bviral.com with your request. Be sure to include the URL to any new channel you'd like to add.",
-  },
-  {
-    question: "How does billing work?",
-    answer: (
-      <>
-        Depending on your selections at checkout, you&apos;ll automatically be billed monthly or annually. To view or update your billing details, go to <ManageSubscriptionLink />.
-      </>
-    ),
-  },
-  {
-    question: "What happens if I cancel my subscription?",
-    answer:
-      "You may keep the videos posted that were shared during your active subscription period, but you may not share any more BVIRAL videos on your channel(s) after your term ends. To cancel, simply email sales@bviral.com at least 30 days before the end of your current term.",
-  },
-  {
-    question: "Can I change my plan?",
-    answer: (
-      <>
-        You can switch to monthly or annual billing by visiting the <ManageSubscriptionLink /> page or contacting sales@bviral.com.
-      </>
-    ),
-  },
-  {
-    question: "What if my channel username changed?",
-    answer:
-      "Contact sales@bviral.com immediately with your old and new username so we can update your whitelist right away.",
-  },
-];
+function sortFaqs(items: FaqRecord[]): FaqRecord[] {
+  if (items.some((item) => item.score !== null && item.score !== undefined)) {
+    return [...items].sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+  }
+  return [...items].sort((a, b) => (a.display_order ?? 9999) - (b.display_order ?? 9999));
+}
 
 export default function SupportPage() {
+  const [faqs, setFaqs] = useState<FaqRecord[]>(sortFaqs(faqSeeds));
+  const [loadingFaqs, setLoadingFaqs] = useState(true);
+  const [faqNotice, setFaqNotice] = useState<string | null>(null);
+  const [searchInput, setSearchInput] = useState("");
+  const [activeQuery, setActiveQuery] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    const load = async () => {
+      setLoadingFaqs(true);
+      try {
+        const result = activeQuery.trim()
+          ? await searchFaqs({ query: activeQuery.trim(), limit: 20 })
+          : await getFaqs({ limit: 50 });
+        if (!active) return;
+        if (result.items.length > 0) {
+          setFaqs(sortFaqs(result.items));
+          setFaqNotice(
+            activeQuery.trim()
+              ? `Showing semantic matches for "${activeQuery.trim()}".`
+              : null,
+          );
+        } else {
+          setFaqs(sortFaqs(faqSeeds));
+          setFaqNotice(
+            activeQuery.trim()
+              ? `No vector matches were found for "${activeQuery.trim()}". Showing the fallback FAQ list instead.`
+              : "FAQ API returned no items, so the fallback list is shown.",
+          );
+        }
+      } catch {
+        if (!active) return;
+        setFaqs(sortFaqs(faqSeeds));
+        setFaqNotice(
+          activeQuery.trim()
+            ? "FAQ search is not available yet, so the fallback list is shown."
+            : "FAQ API is not available yet, so the fallback list is shown.",
+        );
+      } finally {
+        if (active) setLoadingFaqs(false);
+      }
+    };
+    load();
+    return () => {
+      active = false;
+    };
+  }, [activeQuery]);
+
+  const faqCountLabel = useMemo(() => {
+    return `${faqs.length} article${faqs.length === 1 ? "" : "s"}`;
+  }, [faqs]);
+
   return (
     <Box sx={{ minHeight: "100vh", bgcolor: "#fafafa" }}>
       <Box sx={{ px: { xs: 2, sm: 3, lg: 4 }, py: { xs: 4, sm: 6 } }}>
-        {/* Header */}
         <Box>
           <Typography
             variant="h5"
@@ -76,11 +90,10 @@ export default function SupportPage() {
             Support & Help
           </Typography>
           <Typography variant="body1" color="text.secondary" sx={{ mt: 0.5 }}>
-            Get help with your account, channels, and subscription
+            Get help with your account, channels, and subscription.
           </Typography>
         </Box>
 
-        {/* Contact Support Card */}
         <Card
           sx={{
             mt: 4,
@@ -97,28 +110,40 @@ export default function SupportPage() {
               </Typography>
             </Box>
             <Typography variant="body1" color="text.secondary" sx={{ mt: 2 }}>
-              Need help? Our support team is here to assist you with any
-              questions or issues.
+              Need help with approvals, subscription updates, or channel access? The BVIRAL team can assist directly.
             </Typography>
-            <Button
-              href="mailto:sales@bviral.com"
-              variant="contained"
-              startIcon={<Mail style={{ width: 16, height: 16 }} />}
-              sx={{
-                mt: 2,
-                bgcolor: "#111827",
-                "&:hover": { bgcolor: "#1f2937" },
-                textTransform: "none",
-                fontWeight: 600,
-                borderRadius: "9999px",
-              }}
-            >
-              Email sales@bviral.com
-            </Button>
+            <Box sx={{ mt: 2, display: "flex", flexWrap: "wrap", gap: 1.25 }}>
+              <Button
+                href="mailto:sales@bviral.com"
+                variant="contained"
+                startIcon={<Mail style={{ width: 16, height: 16 }} />}
+                sx={{
+                  bgcolor: "#111827",
+                  "&:hover": { bgcolor: "#1f2937" },
+                  textTransform: "none",
+                  fontWeight: 600,
+                  borderRadius: "9999px",
+                }}
+              >
+                Email sales@bviral.com
+              </Button>
+              <Button
+                component={Link}
+                href="/dashboard/subscription"
+                variant="outlined"
+                startIcon={<CreditCard style={{ width: 16, height: 16 }} />}
+                sx={{
+                  textTransform: "none",
+                  fontWeight: 600,
+                  borderRadius: "9999px",
+                }}
+              >
+                Manage Subscription
+              </Button>
+            </Box>
           </CardContent>
         </Card>
 
-        {/* FAQ Card */}
         <Card
           sx={{
             mt: 4,
@@ -128,36 +153,106 @@ export default function SupportPage() {
           }}
         >
           <CardContent sx={{ p: 3 }}>
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-              <HelpCircle style={{ width: 20, height: 20 }} />
-              <Typography variant="h6" fontWeight="bold">
-                Frequently Asked Questions
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: { xs: "flex-start", sm: "center" },
+                justifyContent: "space-between",
+                gap: 1.5,
+                flexDirection: { xs: "column", sm: "row" },
+              }}
+            >
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                <HelpCircle style={{ width: 20, height: 20 }} />
+                <Typography variant="h6" fontWeight="bold">
+                  Frequently Asked Questions
+                </Typography>
+              </Box>
+              <Typography variant="body2" color="text.secondary">
+                {faqCountLabel}
               </Typography>
             </Box>
 
-            <Box
-              sx={{ mt: 3, display: "flex", flexDirection: "column", gap: 1 }}
+            <Stack
+              component="form"
+              direction={{ xs: "column", sm: "row" }}
+              spacing={1}
+              sx={{ mt: 2.5 }}
+              onSubmit={(event) => {
+                event.preventDefault();
+                setActiveQuery(searchInput);
+              }}
             >
-              {faqs.map((faq, index) => (
-                <Box
-                  key={index}
-                  sx={{
-                    p: 2,
-                    borderRadius: 2,
-                    border: "1px solid #e5e7eb",
+              <TextField
+                fullWidth
+                size="small"
+                label="Search FAQs"
+                placeholder="Ask about billing, channels, licensing..."
+                value={searchInput}
+                onChange={(event) => setSearchInput(event.target.value)}
+              />
+              <Button
+                type="submit"
+                variant="outlined"
+                startIcon={<Search style={{ width: 14, height: 14 }} />}
+                sx={{ textTransform: "none", borderRadius: 999, minWidth: { sm: 130 } }}
+              >
+                Search
+              </Button>
+              {activeQuery ? (
+                <Button
+                  type="button"
+                  variant="text"
+                  onClick={() => {
+                    setSearchInput("");
+                    setActiveQuery("");
                   }}
+                  sx={{ textTransform: "none", borderRadius: 999 }}
                 >
-                  <Typography fontWeight="bold">{faq.question}</Typography>
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
-                    sx={{ mt: 1 }}
+                  Clear
+                </Button>
+              ) : null}
+            </Stack>
+
+            {faqNotice ? (
+              <Alert severity="info" sx={{ mt: 2 }}>
+                {faqNotice}
+              </Alert>
+            ) : null}
+
+            {loadingFaqs ? (
+              <Box sx={{ display: "flex", justifyContent: "center", py: 5 }}>
+                <CircularProgress size={24} sx={{ color: "#4D8AFF" }} />
+              </Box>
+            ) : (
+              <Box sx={{ mt: 3, display: "flex", flexDirection: "column", gap: 1 }}>
+                {faqs.map((faq) => (
+                  <Box
+                    key={faq.id}
+                    sx={{
+                      p: 2,
+                      borderRadius: 2,
+                      border: "1px solid #e5e7eb",
+                      bgcolor: "#fff",
+                    }}
                   >
-                    {faq.answer}
-                  </Typography>
-                </Box>
-              ))}
-            </Box>
+                    <Typography fontWeight="bold">{faq.question}</Typography>
+                    {faq.category ? (
+                      <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.5 }}>
+                        {faq.category}
+                      </Typography>
+                    ) : null}
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{ mt: 1, whiteSpace: "pre-wrap" }}
+                    >
+                      {faq.answer}
+                    </Typography>
+                  </Box>
+                ))}
+              </Box>
+            )}
           </CardContent>
         </Card>
       </Box>

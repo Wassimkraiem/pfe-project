@@ -638,10 +638,36 @@ export type ConversationDetail = ConversationSummary & {
   messages: ConversationMessage[];
 };
 
+export type AdminConversationOwner = {
+  id?: number;
+  email?: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
+  clerk_user_id?: string | null;
+};
+
+export type AdminConversationSummary = ConversationSummary & {
+  user?: AdminConversationOwner | null;
+  message_count?: number;
+  last_message_at?: string | null;
+};
+
+export type AdminConversationDetail = AdminConversationSummary & {
+  messages: ConversationMessage[];
+};
+
 type ArEnvelope<T> = {
   status_code: number;
   message: string;
   data: T;
+};
+
+type ArErrorEnvelope = {
+  status_code?: number;
+  message?: string;
+  error_message?: string;
+  error_code?: string;
+  detail?: string;
 };
 
 export async function getConversations(
@@ -650,8 +676,8 @@ export async function getConversations(
   const res = await fetch(`${BASE_URL}/conversations`, {
     headers: { Authorization: `Bearer ${token}` },
   });
-  const json = (await res.json()) as ArEnvelope<ConversationSummary[]>;
-  if (!res.ok) throw new Error(json.message ?? `Request failed: ${res.status}`);
+  const json = (await res.json()) as ArEnvelope<ConversationSummary[]> & ArErrorEnvelope;
+  if (!res.ok) throw new Error(json.message ?? json.error_message ?? json.detail ?? `Request failed: ${res.status}`);
   return json.data;
 }
 
@@ -662,8 +688,8 @@ export async function getConversation(
   const res = await fetch(`${BASE_URL}/conversations/${conversationId}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
-  const json = (await res.json()) as ArEnvelope<ConversationDetail>;
-  if (!res.ok) throw new Error(json.message ?? `Request failed: ${res.status}`);
+  const json = (await res.json()) as ArEnvelope<ConversationDetail> & ArErrorEnvelope;
+  if (!res.ok) throw new Error(json.message ?? json.error_message ?? json.detail ?? `Request failed: ${res.status}`);
   return json.data;
 }
 
@@ -684,8 +710,8 @@ export async function createConversation(
     },
     body: JSON.stringify(payload),
   });
-  const json = (await res.json()) as ArEnvelope<ConversationSummary>;
-  if (!res.ok) throw new Error(json.message ?? `Request failed: ${res.status}`);
+  const json = (await res.json()) as ArEnvelope<ConversationSummary> & ArErrorEnvelope;
+  if (!res.ok) throw new Error(json.message ?? json.error_message ?? json.detail ?? `Request failed: ${res.status}`);
   return json.data;
 }
 
@@ -709,8 +735,8 @@ export async function addConversationMessages(
       body: JSON.stringify(payload),
     },
   );
-  const json = (await res.json()) as ArEnvelope<ConversationDetail>;
-  if (!res.ok) throw new Error(json.message ?? `Request failed: ${res.status}`);
+  const json = (await res.json()) as ArEnvelope<ConversationDetail> & ArErrorEnvelope;
+  if (!res.ok) throw new Error(json.message ?? json.error_message ?? json.detail ?? `Request failed: ${res.status}`);
   return json.data;
 }
 
@@ -723,9 +749,32 @@ export async function deleteConversation(
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) {
-    const json = (await res.json()) as ArEnvelope<unknown>;
-    throw new Error(json.message ?? `Request failed: ${res.status}`);
+    const json = (await res.json()) as ArEnvelope<unknown> & ArErrorEnvelope;
+    throw new Error(json.message ?? json.error_message ?? json.detail ?? `Request failed: ${res.status}`);
   }
+}
+
+export async function getAdminConversations(
+  token: string,
+): Promise<AdminConversationSummary[]> {
+  const res = await fetch(`${BASE_URL}/conversations/admin/all`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const json = (await res.json()) as ArEnvelope<AdminConversationSummary[]> & ArErrorEnvelope;
+  if (!res.ok) throw new Error(json.message ?? json.error_message ?? json.detail ?? `Request failed: ${res.status}`);
+  return json.data;
+}
+
+export async function getAdminConversation(
+  token: string,
+  conversationId: number,
+): Promise<AdminConversationDetail> {
+  const res = await fetch(`${BASE_URL}/conversations/admin/${conversationId}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const json = (await res.json()) as ArEnvelope<AdminConversationDetail> & ArErrorEnvelope;
+  if (!res.ok) throw new Error(json.message ?? json.error_message ?? json.detail ?? `Request failed: ${res.status}`);
+  return json.data;
 }
 
 // ---------------------------------------------------------------------------
@@ -883,6 +932,13 @@ export type VideoSubmission = {
   admin_notes: string | null;
   created_at: string;
   updated_at: string | null;
+  user?: {
+    id?: number;
+    email?: string | null;
+    first_name?: string | null;
+    last_name?: string | null;
+    clerk_user_id?: string | null;
+  } | null;
 };
 
 export async function submitVideo(
@@ -917,6 +973,307 @@ export async function getMySubmissions(
   const json = (await res.json()) as ArEnvelope<VideoSubmission[]>;
   if (!res.ok) throw new Error(json.message ?? `Request failed: ${res.status}`);
   return json.data;
+}
+
+export async function getAdminSubmissions(
+  token: string,
+): Promise<VideoSubmission[]> {
+  const res = await fetch(`${BASE_URL}/video-submissions/admin/all`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const json = (await res.json()) as ArEnvelope<VideoSubmission[]>;
+  if (!res.ok) throw new Error(json.message ?? `Request failed: ${res.status}`);
+  return json.data;
+}
+
+export async function updateAdminSubmission(
+  token: string,
+  submissionId: number,
+  payload: {
+    status: "pending" | "approved" | "rejected";
+    admin_notes?: string | null;
+  },
+): Promise<VideoSubmission> {
+  const res = await fetch(`${BASE_URL}/video-submissions/admin/${submissionId}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+  const json = (await res.json()) as ArEnvelope<VideoSubmission>;
+  if (!res.ok) throw new Error(json.message ?? `Request failed: ${res.status}`);
+  return json.data;
+}
+
+// ---------------------------------------------------------------------------
+// FAQs API
+// ---------------------------------------------------------------------------
+
+export const FAQ_VECTOR_SOURCE =
+  typeof process !== "undefined"
+    ? process.env.NEXT_PUBLIC_FAQ_VECTOR_SOURCE ?? "q&a"
+    : "q&a";
+
+export type FaqVectorItem = {
+  id: string;
+  source: string;
+  content: string;
+  metadata_json: Record<string, unknown>;
+  score?: number | null;
+};
+
+export type FaqRecord = {
+  id: string;
+  question: string;
+  answer: string;
+  category?: string | null;
+  is_published?: boolean;
+  display_order?: number;
+  source?: string;
+  score?: number | null;
+  metadata_json?: Record<string, unknown>;
+  created_at?: string;
+  updated_at?: string | null;
+};
+
+export type FaqListResult = {
+  items: FaqRecord[];
+  next_offset?: string | number | null;
+};
+
+function readStringMetadata(
+  metadata: Record<string, unknown>,
+  keys: string[],
+): string | null {
+  for (const key of keys) {
+    const value = metadata[key];
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return null;
+}
+
+function readBooleanMetadata(
+  metadata: Record<string, unknown>,
+  keys: string[],
+): boolean | undefined {
+  for (const key of keys) {
+    const value = metadata[key];
+    if (typeof value === "boolean") return value;
+  }
+  return undefined;
+}
+
+function readNumberMetadata(
+  metadata: Record<string, unknown>,
+  keys: string[],
+): number | undefined {
+  for (const key of keys) {
+    const value = metadata[key];
+    if (typeof value === "number" && Number.isFinite(value)) return value;
+    if (typeof value === "string" && value.trim()) {
+      const parsed = Number(value);
+      if (Number.isFinite(parsed)) return parsed;
+    }
+  }
+  return undefined;
+}
+
+function splitQuestionAndAnswer(content: string): { question: string | null; answer: string } {
+  const trimmed = content.trim();
+  const match = trimmed.match(/^Q:\s*([\s\S]*?)\n+A:\s*([\s\S]*)$/i);
+  if (match) {
+    return {
+      question: match[1]?.trim() || null,
+      answer: match[2]?.trim() || "",
+    };
+  }
+  return { question: null, answer: trimmed };
+}
+
+function vectorToFaq(item: FaqVectorItem): FaqRecord {
+  const metadata = item.metadata_json ?? {};
+  const split = splitQuestionAndAnswer(item.content);
+  return {
+    id: item.id,
+    source: item.source,
+    question:
+      readStringMetadata(metadata, ["question", "title"]) ??
+      split.question ??
+      "Untitled FAQ",
+    answer:
+      readStringMetadata(metadata, ["answer"]) ??
+      split.answer,
+    category: readStringMetadata(metadata, ["category", "topic"]),
+    is_published: readBooleanMetadata(metadata, ["is_published", "published"]) ?? true,
+    display_order: readNumberMetadata(metadata, ["display_order", "order"]) ?? 0,
+    score: item.score ?? null,
+    metadata_json: metadata,
+  };
+}
+
+function faqToVectorPayload(payload: {
+  question?: string;
+  answer?: string;
+  category?: string | null;
+  is_published?: boolean;
+  display_order?: number;
+  source?: string;
+}) {
+  const question = payload.question?.trim() ?? "";
+  const answer = payload.answer?.trim() ?? "";
+  return {
+    source: payload.source ?? FAQ_VECTOR_SOURCE,
+    content: `Q: ${question}\nA: ${answer}`,
+    metadata_json: {
+      question,
+      answer,
+      category: payload.category ?? null,
+      is_published: payload.is_published ?? true,
+      display_order: payload.display_order ?? 0,
+    },
+  };
+}
+
+type VectorListResponse = {
+  items: FaqVectorItem[];
+  next_offset?: string | number | null;
+};
+
+export async function getFaqs(options?: {
+  limit?: number;
+  offset?: string | number | null;
+  source?: string;
+}): Promise<FaqListResult> {
+  const params = new URLSearchParams();
+  if (typeof options?.limit === "number") params.set("limit", String(options.limit));
+  if (options?.offset !== null && options?.offset !== undefined) {
+    params.set("offset", String(options.offset));
+  }
+  if (options?.source) params.set("source", options.source);
+  const qs = params.toString();
+  const res = await fetch(`/api/faqs${qs ? `?${qs}` : ""}`, {
+    cache: "no-store",
+  });
+  const json = (await res.json()) as VectorListResponse & { error?: string; detail?: string };
+  if (!res.ok) throw new Error(json.error ?? json.detail ?? `Request failed: ${res.status}`);
+  return {
+    items: (json.items ?? []).map(vectorToFaq),
+    next_offset: json.next_offset ?? null,
+  };
+}
+
+export async function searchFaqs(options: {
+  query: string;
+  limit?: number;
+  source?: string;
+}): Promise<FaqListResult> {
+  const params = new URLSearchParams();
+  params.set("query", options.query);
+  if (typeof options.limit === "number") params.set("limit", String(options.limit));
+  if (options.source) params.set("source", options.source);
+  const res = await fetch(`/api/faqs/search?${params.toString()}`, {
+    cache: "no-store",
+  });
+  const json = (await res.json()) as VectorListResponse & { error?: string; detail?: string };
+  if (!res.ok) throw new Error(json.error ?? json.detail ?? `Request failed: ${res.status}`);
+  return {
+    items: (json.items ?? []).map(vectorToFaq),
+    next_offset: json.next_offset ?? null,
+  };
+}
+
+export async function getFaq(faqId: string): Promise<FaqRecord> {
+  const res = await fetch(`/api/faqs/${encodeURIComponent(faqId)}`, {
+    cache: "no-store",
+  });
+  const json = (await res.json()) as FaqVectorItem & { error?: string; detail?: string };
+  if (!res.ok) throw new Error(json.error ?? json.detail ?? `Request failed: ${res.status}`);
+  return vectorToFaq(json);
+}
+
+export async function getAdminFaqs(options?: {
+  limit?: number;
+  offset?: string | number | null;
+  source?: string;
+}): Promise<FaqListResult> {
+  return getFaqs(options);
+}
+
+export async function createFaq(
+  payload: {
+    question: string;
+    answer: string;
+    category?: string | null;
+    is_published?: boolean;
+    display_order?: number;
+    source?: string;
+  },
+): Promise<FaqRecord> {
+  const res = await fetch(`/api/faqs`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(faqToVectorPayload(payload)),
+  });
+  const json = (await res.json()) as FaqVectorItem & { error?: string; detail?: string };
+  if (!res.ok) throw new Error(json.error ?? json.detail ?? `Request failed: ${res.status}`);
+  return vectorToFaq(json);
+}
+
+export async function updateFaq(
+  faqId: string,
+  payload: {
+    question?: string;
+    answer?: string;
+    category?: string | null;
+    is_published?: boolean;
+    display_order?: number;
+    source?: string;
+  },
+): Promise<FaqRecord> {
+  const existing = await getFaq(faqId);
+  const res = await fetch(`/api/faqs/${encodeURIComponent(faqId)}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(
+      faqToVectorPayload({
+        question: payload.question ?? existing.question,
+        answer: payload.answer ?? existing.answer,
+        category:
+          payload.category === undefined
+            ? existing.category ?? null
+            : payload.category,
+        is_published:
+          payload.is_published === undefined
+            ? existing.is_published ?? true
+            : payload.is_published,
+        display_order:
+          payload.display_order === undefined
+            ? existing.display_order ?? 0
+            : payload.display_order,
+        source: payload.source ?? existing.source ?? FAQ_VECTOR_SOURCE,
+      }),
+    ),
+  });
+  const json = (await res.json()) as FaqVectorItem & { error?: string; detail?: string };
+  if (!res.ok) throw new Error(json.error ?? json.detail ?? `Request failed: ${res.status}`);
+  return vectorToFaq(json);
+}
+
+export async function deleteFaq(faqId: string): Promise<void> {
+  const res = await fetch(`/api/faqs/${encodeURIComponent(faqId)}`, {
+    method: "DELETE",
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    const json = (await res.json()) as { error?: string; detail?: string };
+    throw new Error(json.error ?? json.detail ?? `Request failed: ${res.status}`);
+  }
 }
 
 // ---------------------------------------------------------------------------

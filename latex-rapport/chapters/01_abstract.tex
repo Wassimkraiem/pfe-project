@@ -1,0 +1,55 @@
+\chapter*{Abstract}
+\addcontentsline{toc}{chapter}{Abstract}
+\markboth{Abstract}{Abstract}
+
+This End-of-Studies Project (PFE) was carried out in collaboration with
+\textbf{BVIRAL}, a company specialized in viral video licensing. The initial
+goal was practical: replace disconnected internal tools with one
+production-ready platform that supports the full rights workflow.
+
+The project delivered the \textbf{BVIRAL Platform}, built around two
+complementary products: (1) a video search portal for discovering clips through
+keywords, filters, and natural-language queries, and (2) an Authentic Rights
+Portal for onboarding, subscription management, and licensing operations for
+creators and media partners.
+
+The platform follows a \textbf{microservices monorepo} architecture with five
+independent services: AR-API (FastAPI, PostgreSQL, Celery, Stripe, Clerk),
+Videos Search API (Flask, OpenSearch), Agentic Helper API (FastAPI, LangChain,
+Qdrant, LangSmith), Video Search Portal (Next.js 15), and Authentic Rights
+Portal (Next.js 16). Services are containerized and orchestrated with Docker
+Compose.
+
+A core contribution is the \textbf{Agentic Helper}, which combines RAG over
+\textit{Qdrant}, LangSmith-managed prompts and tracing, a ReAct video-search
+agent, a two-level routing classifier, and Whisper-based audio
+transcription. This AI layer improves video discovery, provides contextual
+support directly inside the user interfaces, and exposes admin endpoints for
+managing FAQ vectors.
+
+\bigskip
+\noindent\textbf{Keywords:} Microservices; Next.js; FastAPI; Flask;
+OpenSearch; LangChain; RAG; Qdrant; LangSmith; OpenAI; Stripe;
+Clerk; Docker; Celery; Video search; Rights management.
+
+\newpage
+\chapter*{Summary}
+\addcontentsline{toc}{chapter}{Summary}
+\markboth{Summary}{Summary}
+
+This report presents the end-to-end design and implementation of the BVIRAL
+Platform as a unified system for content rights operations and AI-assisted
+video discovery. The architecture separates concerns into independent
+microservices, with dedicated APIs for onboarding, payments, search, and
+conversational assistance.
+
+From a software engineering perspective, the work focused on production
+constraints: clear service boundaries, asynchronous background processing,
+containerized deployment, and reproducible CI/CD. From an AI perspective, the
+work combined retrieval-based grounding, tool-using agents, intent routing, and
+speech transcription to support practical user interactions rather than demo
+flows.
+
+The resulting platform is functional in production scenarios and provides a
+clear baseline for future upgrades such as multimodal retrieval, stronger LLM
+evaluation, and expanded operational tooling.

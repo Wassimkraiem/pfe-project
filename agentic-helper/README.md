@@ -1,90 +1,79 @@
 # Agentic Helper API
 
-FastAPI chatbot with LangChain + OpenAI and pgvector-backed RAG.
+FastAPI chatbot with LangChain + OpenAI, external Qdrant for RAG, deterministic advanced video search, and optional LangSmith tracing/prompt management.
 
 ## Features
-- Per-user chat memory with a single chat endpoint
-- RAG ingestion endpoint
-- Retrieval with pgvector cosine similarity
+- Single chat endpoint with `default`, `video_search`, and `auto` routing modes
+- Deterministic `VideoSearchService` over the Videos Search API `/api/videos/advanced-search` endpoint
+- Optional Redis-backed conversation memory with in-memory fallback
+- RAG ingestion endpoints for JSON and Excel sources
+- Retrieval with Qdrant cosine similarity
 - API key auth (`x-api-key`) and user identifier header (`x-user-id`)
-- Startup chatbot initialization (`app.state`) for model/prompt control
-- RAG router classifier prompt to decide when retrieval is needed
-- Interest classifier label (`INTERESTED` / `NOT_INTERESTED` / `UNCLEAR`) in chat response
-- Branch-specific response prompts for `INTERESTED` and `NOT_INTERESTED`
+- Hosted Qdrant support through `QDRANT_URL` and `QDRANT_API_KEY`
+- Optional LangSmith tracing and prompt loading
+- Startup chatbot initialization (`app.state`) for model and prompt control
+
+## Chat Modes
+- `default`: BVIRAL RAG chatbot with interest/RAG classifiers.
+- `video_search`: structured video-search plan extraction, deterministic normalization, and advanced hybrid search.
+- `auto`: unified router chooses `CHAT_RAG`, `VIDEO_SEARCH`, `DIRECT`, `OUT_OF_SCOPE`, or `SUPPORT_HANDOFF`.
+
+Video-search responses can include `videos`, `search_filters`, `search_action`, `search_url`, `total`, `next_offset`, `execution`, and `fallbacks_used`. RAG responses include `sources` and `citations`.
 
 ## Quick Start
-1. Create a PostgreSQL database and enable `pgvector` extension support.
-2. Copy env:
+1. Copy env:
    ```bash
    cp .env.example .env
    ```
-3. Install dependencies (example):
+2. Set your external Qdrant endpoint:
+   ```bash
+   QDRANT_URL=https://your-qdrant-endpoint
+   QDRANT_API_KEY=...
+   ```
+3. Install dependencies:
    ```bash
    pip install -e .[dev]
    ```
-4. Run API:
+4. Run the API:
    ```bash
    uvicorn app.main:app --reload --port 8003
    ```
 
-## Run With Docker
-1. Copy env and set your OpenAI key:
-   ```bash
-   cp .env.example .env
-   ```
-2. Start services:
-   ```bash
-   docker compose up --build
-   ```
-3. Verify health:
-   ```bash
-   curl http://localhost:8003/health
-   ```
+The service creates the configured Qdrant collection automatically if it does not already exist.
 
-Notes:
-- `docker-compose.yml` runs `pgvector/pgvector:pg16` for Postgres + vector support.
-- API container overrides `DATABASE_URL` to use the `db` service hostname.
-- Chatbot settings come from `.env`: `OPENAI_CHAT_MODEL`, `OPENAI_CHAT_TEMPERATURE`, `CHATBOT_SYSTEM_PROMPT`.
-- Preferred system prompt source is `CHATBOT_SYSTEM_PROMPT_FILE` (defaults to `data/prompts/bviral_system_prompt.txt`). If file is missing, it falls back to `CHATBOT_SYSTEM_PROMPT`.
-- Classifier settings come from `.env`: `OPENAI_CLASSIFIER_MODEL`, `OPENAI_CLASSIFIER_TEMPERATURE`, `CHATBOT_RAG_CLASSIFIER_PROMPT`, `CHATBOT_INTEREST_CLASSIFIER_PROMPT`.
-- Interest branch prompts come from `.env`: `CHATBOT_INTERESTED_RESPONSE_PROMPT`, `CHATBOT_NOT_INTERESTED_RESPONSE_PROMPT`.
+## LangSmith
+Tracing is enabled by configuration:
+```bash
+LANGSMITH_TRACING=true
+LANGSMITH_API_KEY=...
+LANGSMITH_PROJECT=agentic-helper
+```
+
+Prompts can stay in files and `.env`, or be pulled from LangSmith by setting any of these IDs:
+- `CHATBOT_SYSTEM_PROMPT_LANGSMITH`
+- `CHATBOT_RAG_CLASSIFIER_PROMPT_LANGSMITH`
+- `CHATBOT_ROUTER_PROMPT_LANGSMITH`
+- `CHATBOT_INTEREST_CLASSIFIER_PROMPT_LANGSMITH`
+- `CHATBOT_INTERESTED_RESPONSE_PROMPT_LANGSMITH`
+- `CHATBOT_NOT_INTERESTED_RESPONSE_PROMPT_LANGSMITH`
+- `CHATBOT_VIDEO_FILTER_EXTRACTOR_PROMPT_LANGSMITH`
+- `VIDEO_SEARCH_SYSTEM_PROMPT_LANGSMITH`
+
+When a LangSmith prompt ID is configured, the app tries LangSmith first and falls back to file/env prompt configuration if the pull fails.
+
+## Docker
+The local Docker setup starts the API only. Qdrant is expected to be external and provided through `.env`.
+
+```bash
+docker compose up --build
+```
+
+## Notes
+- Chat history uses Redis when `CHAT_HISTORY_REDIS_URL` is set. Otherwise it falls back to per-process memory.
+- Normal video search uses deterministic orchestration. LangGraph remains available as a fallback when advanced search is disabled.
+- Prompt files under `data/prompts/` still work without LangSmith.
 
 ## API
 - `POST /api/v1/chat`
 - `POST /api/v1/rag/ingest`
 - `POST /api/v1/rag/ingest-excel`
-
-## Example Ingestion
-```bash
-curl -X POST http://localhost:8003/api/v1/rag/ingest \
-  -H "content-type: application/json" \
-  -H "x-api-key: change-me" \
-  -d '{
-    "replace_source": true,
-    "documents": [
-      {"source": "faq", "text": "Your support hours are Monday-Friday."}
-    ]
-  }'
-```
-
-## Example Chat
-```bash
-curl -X POST http://localhost:8003/api/v1/chat \
-  -H "content-type: application/json" \
-  -H "x-api-key: change-me" \
-  -H "x-user-id: user-123" \
-  -d '{"input_message": "What are your support hours?"}'
-```
-
-## Example Excel Ingestion
-```bash
-curl -X POST http://localhost:8003/api/v1/rag/ingest-excel \
-  -H "x-api-key: change-me" \
-  -F "file=@/path/to/faq.xlsx" \
-  -F "source=faq-excel" \
-  -F "question_column=question" \
-  -F "answer_column=answer" \
-  -F "replace_source=true"
-```
-
-The Excel file must be `.xlsx` and include header columns (default names: `question`, `answer`).

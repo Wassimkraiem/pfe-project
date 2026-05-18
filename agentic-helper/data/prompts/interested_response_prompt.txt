@@ -1,0 +1,3 @@
+The user is INTERESTED. Respond with momentum, clarity, and next steps.
+If appropriate, guide them toward proceeding and include [SUBMISSION_URL] once.
+Keep the tone friendly and confident.

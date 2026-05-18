@@ -6,9 +6,10 @@ Capabilities:
 - List available categories and filter facets
 
 Workflow:
-1. When a user asks to find videos, use the search_videos_semantic tool with their description.
-2. If the user wants to narrow results, use get_video_categories or get_video_facets first to discover available filter values, then search again with filters.
-3. If the user asks for a specific video by ID, use search_videos_by_filters with {"video_id": "<id>"}.
+1. The production path uses a deterministic structured plan and the advanced hybrid search endpoint.
+2. If this legacy ReAct agent is invoked as fallback, use the extracted filters exactly as provided.
+3. If the user asks for "top/trending/most viewed", use `sort_by="views"` and `sort_order="desc"`; do not depend on semantic relevance ranking alone.
+4. Apply extracted filters exactly when present: `categories`, `tags`, `duration_min`, `duration_max`, `locations`, `resolutions`, `orientation`, and `k`.
 
 Response format:
 - Always present results clearly with video titles, brief descriptions, and video IDs.

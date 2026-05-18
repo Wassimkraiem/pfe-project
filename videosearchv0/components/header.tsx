@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Menu } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { UserButton, useAuth } from '@clerk/nextjs';
-import { buildSigninPortalUrl } from '@/lib/auth-portal';
+import { buildDashboardPortalUrl, buildSigninPortalUrl } from '@/lib/auth-portal';
 
 export function Header() {
 	const { isLoaded, isSignedIn } = useAuth();
@@ -44,6 +44,16 @@ export function Header() {
 
 				{/* User Actions */}
 				<div className='flex items-center space-x-4'>
+					{isLoaded && isSignedIn && (
+						<Button
+							asChild
+							size='sm'
+							variant='outline'
+							className='hidden md:inline-flex'
+						>
+							<Link href={buildDashboardPortalUrl()}>Dashboard</Link>
+						</Button>
+					)}
 					{isLoaded && isSignedIn ? (
 						<UserButton />
 					) : (
@@ -70,12 +80,21 @@ export function Header() {
 								<Link href='/categories' className='text-sm font-medium'>
 									Categories
 								</Link>
-								<Link
-									href={buildSigninPortalUrl()}
-									className='text-sm font-medium'
-								>
-									Login
-								</Link>
+								{isLoaded && isSignedIn ? (
+									<Link
+										href={buildDashboardPortalUrl()}
+										className='text-sm font-medium'
+									>
+										Dashboard
+									</Link>
+								) : (
+									<Link
+										href={buildSigninPortalUrl()}
+										className='text-sm font-medium'
+									>
+										Login
+									</Link>
+								)}
 							</nav>
 						</SheetContent>
 					</Sheet>

@@ -4,6 +4,7 @@ export type VideoResult = {
 	video_id: string;
 	title?: string;
 	description?: string;
+	views?: number;
 	tags?: string[];
 	keywords?: string[];
 	duration?: string | number;
@@ -47,6 +48,11 @@ export function VideoChatCard({
 					<p className='text-muted-foreground truncate text-[10px]'>{video.description}</p>
 				)}
 				<div className='flex gap-0.5 mt-0.5 flex-wrap'>
+					{typeof video.views === 'number' && (
+						<span className='rounded bg-muted px-1 py-px text-[9px] font-medium'>
+							{video.views.toLocaleString()} views
+						</span>
+					)}
 					{video.duration && (
 						<span className='rounded bg-muted px-1 py-px text-[9px] font-medium'>
 							{video.duration}s

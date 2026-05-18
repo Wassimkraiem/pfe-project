@@ -1,0 +1,49 @@
+\chapter*{General Introduction}
+\addcontentsline{toc}{chapter}{General Introduction}
+\markboth{General Introduction}{General Introduction}
+
+\section*{Context and Motivation}
+
+Short-form video is now the dominant content format on social media, and that creates real friction for media companies. News outlets, broadcasters, and digital publishers need a constant supply of licensed footage, often viral clips captured by ordinary people on Instagram, TikTok, and YouTube. Yet finding a clip, verifying ownership, negotiating rights, and delivering files still relies heavily on email threads, spreadsheets, and manual follow-ups.
+
+\textbf{BVIRAL} is a media technology company that licenses viral video content. The company sits between the people who shoot the footage and the organizations that want to publish it. As the catalogue grew and the client base expanded, the collection of internal scripts and disconnected SaaS tools that ran the business stopped scaling.
+
+This project replaces that patchwork with a \textbf{unified, API-first platform} that covers the full lifecycle of a video rights transaction, from creator channel submission, through subscription payment and digital agreement, to catalogue search with AI assistance when keyword search is not enough.
+
+\section*{Problem Statement}
+
+Before this project, BVIRAL had four concrete operational gaps:
+
+\begin{itemize}
+  \item \textbf{Manual onboarding}: Creators and media partners had no self-service flow. Every new account required staff intervention for channel review, payment coordination, and access provisioning.
+  \item \textbf{Weak search}: The video catalogue was searchable only by keyword. Queries like "a crowd celebrating a football goal" returned nothing useful.
+  \item \textbf{No conversational interface}: Users couldn't describe what they were looking for in plain language or ask support questions without waiting for a human response.
+  \item \textbf{Operational silos}: Authentication, payments, video indexing, and customer support ran as separate tools with no shared data model or unified API.
+\end{itemize}
+
+\section*{Proposed Solution}
+
+This End-of-Studies Project delivers the \textbf{BVIRAL Platform}, a microservices monorepo with five production-grade services:
+
+\begin{enumerate}
+  \item \textbf{AR-API}: FastAPI backend handling user lifecycle, onboarding, Stripe payments, Celery background jobs, and media library access provisioning.
+  \item \textbf{Videos Search API}: Flask/OpenSearch service for full-text, semantic, and faceted video search.
+  \item \textbf{Agentic Helper API}: LangChain service providing a RAG chatbot, a video-search ReAct agent, a two-level routing classifier, and speech transcription.
+  \item \textbf{Video Search Portal}: Next.js 15 public portal for video discovery.
+  \item \textbf{Authentic Rights Portal}: Next.js 16 SaaS dashboard for subscription and rights management.
+\end{enumerate}
+
+\section*{Report Structure}
+
+This report is organized into eight chapters followed by a general conclusion:
+
+\begin{itemize}
+  \item \textbf{Chapter 1} covers the host organization, the business context, a comparison with existing solutions, and the development methodology.
+  \item \textbf{Chapter 2} specifies functional and non-functional requirements and presents the global use-case models (Sprint 0).
+  \item \textbf{Chapter 3} details Sprint 1: user authentication, creator onboarding flow, Stripe subscription payments, and Canto DAM integration.
+  \item \textbf{Chapter 4} details Sprint 2: video document ingestion, OpenSearch index mapping, keyword search, and faceted filtering.
+  \item \textbf{Chapter 5} details Sprint 3: embedding pipeline, kNN vector search, parallel retrieval, RRF fusion, and position-aware ranking.
+  \item \textbf{Chapter 6} details Sprint 4: the Agentic Helper's Qdrant-backed RAG layer, two-level classifier pipeline, prompt engineering, and sliding-window memory.
+  \item \textbf{Chapter 7} details Sprint 5: the structured search orchestrator, ReAct agent fallback, Whisper voice transcription, FAQ administration, and portal integration.
+  \item \textbf{Chapter 8} details Sprint 6: the personalized recommendation engine, per-user interest profiles with weight decay, blended candidate pipeline, and anti-repetition ranking.
+\end{itemize}

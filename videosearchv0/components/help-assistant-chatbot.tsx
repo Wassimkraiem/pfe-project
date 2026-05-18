@@ -30,6 +30,7 @@ interface ChatMessage {
 }
 
 const CHAT_API_URL = '/api/chat';
+const TRANSCRIBE_API_URL = '/api/transcribe';
 const WELCOME_MESSAGE: ChatMessage = {
 	id: 'welcome',
 	role: 'assistant',
@@ -80,13 +81,82 @@ function getPlayableUrl(video: VideoResult): string {
 	);
 }
 
+function formatDuration(duration?: string | number): string | null {
+	if (duration === undefined || duration === null || duration === '') return null;
+	const value = Number(duration);
+	if (!Number.isFinite(value)) return String(duration);
+	const total = Math.max(0, Math.round(value));
+	const mins = Math.floor(total / 60);
+	const secs = total % 60;
+	return `${mins}:${secs.toString().padStart(2, '0')}`;
+}
+
+function parseNumberLike(value: unknown): number | undefined {
+	if (typeof value === 'number' && Number.isFinite(value)) return value;
+	if (typeof value === 'string') {
+		const cleaned = value.trim().replace(/,/g, '');
+		if (!cleaned) return undefined;
+		const parsed = Number(cleaned);
+		if (Number.isFinite(parsed)) return parsed;
+	}
+	return undefined;
+}
+
+function deriveVideoDetailsFromDoc(doc: any): Partial<VideoResult> {
+	if (!doc || typeof doc !== 'object') return {};
+
+	const rmsData = doc?.rms?.data && typeof doc.rms.data === 'object' ? doc.rms.data : {};
+	const ctsData = doc?.cts?.data && typeof doc.cts.data === 'object' ? doc.cts.data : {};
+
+	// Some records have partial fields in rms and richer fields in cts (or vice versa).
+	// Read values across both sources to avoid dropping metadata like views.
+	const sources = [rmsData, ctsData].filter(
+		(item) => item && typeof item === 'object' && Object.keys(item).length > 0
+	);
+	const pickFirst = <T,>(selector: (item: any) => T | undefined): T | undefined => {
+		for (const source of sources) {
+			const value = selector(source);
+			if (value !== undefined && value !== null && value !== '') return value;
+		}
+		return undefined;
+	};
+	const metadata =
+		pickFirst((item) =>
+			item?.metadata && typeof item.metadata === 'object' ? item.metadata : undefined
+		) || {};
+	const url =
+		pickFirst((item) => (item?.url && typeof item.url === 'object' ? item.url : undefined)) || {};
+	const views =
+		parseNumberLike(pickFirst((item) => item?.views)) ??
+		parseNumberLike((metadata as any)?.views) ??
+		parseNumberLike((metadata as any)?.view_count);
+
+	return {
+		video_id: doc.video_id || pickFirst((item) => item?.id) || '',
+		title: pickFirst((item) => item?.name || item?.additional?.Title) || '',
+		description: pickFirst((item) => item?.description || item?.additional?.Description) || '',
+		views,
+		duration:
+			pickFirst((item) => item?.metadata?.RDuration) ??
+			pickFirst((item) => item?.metadata?.duration) ??
+			pickFirst((item) => item?.cts?.duration),
+		resolution: pickFirst((item) => item?.default?.Dimensions) || '',
+		orientation: metadata.Orientation || '',
+		owner: pickFirst((item) => item?.ownerName) || '',
+		tags: (pickFirst((item) => (Array.isArray(item?.tag) ? item.tag : undefined)) || []) as string[],
+		keywords: (pickFirst((item) => (Array.isArray(item?.keyword) ? item.keyword : undefined)) || []) as string[],
+		directUrlPreviewPlay: typeof url.directUrlPreviewPlay === 'string' ? url.directUrlPreviewPlay : undefined,
+		directUrlOriginal: typeof url.directUrlOriginal === 'string' ? url.directUrlOriginal : undefined,
+		playUrl: typeof url.play === 'string' ? url.play : undefined,
+	};
+}
+
 export function HelpAssistantChatbot() {
 	const { isLoaded, isSignedIn, getToken } = useAuth();
 	const [isOpen, setIsOpen] = useState(false);
 	const [isSending, setIsSending] = useState(false);
 	const [input, setInput] = useState('');
 	const [messages, setMessages] = useState<ChatMessage[]>([WELCOME_MESSAGE]);
-	const [chatMode, setChatMode] = useState<'default' | 'video_search'>('video_search');
 
 	const [conversations, setConversations] = useState<ConversationSummary[]>([]);
 	const [activeConversationId, setActiveConversationId] = useState<number | null>(null);
@@ -99,10 +169,18 @@ export function HelpAssistantChatbot() {
 	const [viewerUrl, setViewerUrl] = useState('');
 	const [viewerLoading, setViewerLoading] = useState(false);
 	const [viewerError, setViewerError] = useState<string | null>(null);
+	const [viewerDetails, setViewerDetails] = useState<VideoResult | null>(null);
+	const [isRecording, setIsRecording] = useState(false);
+	const [isTranscribing, setIsTranscribing] = useState(false);
+	const [recordingError, setRecordingError] = useState<string | null>(null);
 
 	const bottomRef = useRef<HTMLDivElement | null>(null);
 	const historyLoadedRef = useRef(false);
+	const recorderRef = useRef<MediaRecorder | null>(null);
+	const streamRef = useRef<MediaStream | null>(null);
+	const chunksRef = useRef<BlobPart[]>([]);
 	const currentViewerVideo = viewerVideos ? viewerVideos[viewerIndex] : null;
+	const activeViewerVideo = viewerDetails || currentViewerVideo;
 
 	const openViewer = (videos: VideoResult[], index: number) => {
 		if (!videos.length) return;
@@ -110,6 +188,7 @@ export function HelpAssistantChatbot() {
 		setViewerIndex(index);
 		setViewerUrl('');
 		setViewerError(null);
+		setViewerDetails(videos[index] || null);
 	};
 
 	const closeViewer = () => {
@@ -117,6 +196,7 @@ export function HelpAssistantChatbot() {
 		setViewerIndex(0);
 		setViewerUrl('');
 		setViewerError(null);
+		setViewerDetails(null);
 	};
 
 	const goPrevViewer = () => {
@@ -130,12 +210,16 @@ export function HelpAssistantChatbot() {
 
 	useEffect(() => {
 		if (!currentViewerVideo) return;
+		setViewerDetails(currentViewerVideo);
 
 		const direct = getPlayableUrl(currentViewerVideo);
+		let hasDirectUrl = false;
 		if (direct) {
+			hasDirectUrl = true;
 			setViewerUrl(direct);
 			setViewerError(null);
-			return;
+		} else {
+			setViewerUrl('');
 		}
 
 		let cancelled = false;
@@ -159,8 +243,13 @@ export function HelpAssistantChatbot() {
 				}
 
 				const payload = await response.json();
-				const url = payload?.data?.videos?.[0]?.rms?.data?.url;
+				const doc = payload?.data?.videos?.[0];
+				const derived = deriveVideoDetailsFromDoc(doc);
+				const url = doc?.rms?.data?.url || doc?.cts?.data?.url;
 				const resolved =
+					derived.directUrlPreviewPlay ||
+					derived.playUrl ||
+					derived.directUrlOriginal ||
 					url?.directUrlPreviewPlay ||
 					url?.play ||
 					url?.directUrlOriginal ||
@@ -168,16 +257,20 @@ export function HelpAssistantChatbot() {
 					'';
 
 				if (!cancelled) {
+					setViewerDetails((prev) => ({
+						...(prev || currentViewerVideo),
+						...derived,
+					}));
 					if (resolved) {
 						setViewerUrl(resolved);
 						setViewerError(null);
-					} else {
+					} else if (!hasDirectUrl) {
 						setViewerError('No playable URL found for this video.');
 					}
 				}
 			} catch {
 				if (!cancelled) {
-					setViewerError('Could not load this video right now.');
+					if (!hasDirectUrl) setViewerError('Could not load this video right now.');
 				}
 			} finally {
 				if (!cancelled) setViewerLoading(false);
@@ -310,7 +403,7 @@ export function HelpAssistantChatbot() {
 	const handleSubmit = async (event: FormEvent) => {
 		event.preventDefault();
 		const text = input.trim();
-		if (!text || isSending) return;
+		if (!text || isSending || isTranscribing) return;
 
 		const userMsg: ChatMessage = { id: `u-${Date.now()}`, role: 'user', content: text };
 		const nextMessages = [...messages, userMsg];
@@ -326,7 +419,7 @@ export function HelpAssistantChatbot() {
 				body: JSON.stringify({
 					input_message: text,
 					message: text,
-					mode: chatMode,
+					mode: 'auto',
 					history: nextMessages.map((m) => ({ role: m.role, content: m.content })),
 				}),
 			});
@@ -397,6 +490,89 @@ export function HelpAssistantChatbot() {
 		}
 	};
 
+	const stopRecording = useCallback(() => {
+		const recorder = recorderRef.current;
+		if (recorder && recorder.state !== 'inactive') {
+			recorder.stop();
+		}
+	}, []);
+
+	const startRecording = useCallback(async () => {
+		setRecordingError(null);
+		if (!navigator.mediaDevices?.getUserMedia) {
+			setRecordingError('Voice input is not supported in this browser.');
+			return;
+		}
+
+		try {
+			const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+			streamRef.current = stream;
+			chunksRef.current = [];
+
+			const mimeType =
+				typeof MediaRecorder !== 'undefined' &&
+				MediaRecorder.isTypeSupported('audio/webm')
+					? 'audio/webm'
+					: '';
+			const recorder = mimeType
+				? new MediaRecorder(stream, { mimeType })
+				: new MediaRecorder(stream);
+			recorderRef.current = recorder;
+
+			recorder.ondataavailable = (event) => {
+				if (event.data && event.data.size > 0) {
+					chunksRef.current.push(event.data);
+				}
+			};
+
+			recorder.onstop = async () => {
+				setIsRecording(false);
+				const audioBlob = new Blob(chunksRef.current, { type: 'audio/webm' });
+				chunksRef.current = [];
+				streamRef.current?.getTracks().forEach((track) => track.stop());
+				streamRef.current = null;
+
+				if (!audioBlob.size) return;
+
+				setIsTranscribing(true);
+				try {
+					const formData = new FormData();
+					formData.append('audio', audioBlob, 'recording.webm');
+					const response = await fetch(TRANSCRIBE_API_URL, {
+						method: 'POST',
+						body: formData,
+					});
+					if (!response.ok) throw new Error(`Transcription failed (${response.status})`);
+					const payload = (await response.json()) as { text?: string };
+					const transcript = (payload.text ?? '').trim();
+					if (transcript) {
+						setInput((prev) => (prev ? `${prev} ${transcript}` : transcript));
+					}
+				} catch {
+					setRecordingError('Could not transcribe audio. Please try again.');
+				} finally {
+					setIsTranscribing(false);
+				}
+			};
+
+			recorder.start();
+			setIsRecording(true);
+		} catch {
+			setRecordingError('Microphone access was denied.');
+			streamRef.current?.getTracks().forEach((track) => track.stop());
+			streamRef.current = null;
+		}
+	}, []);
+
+	useEffect(() => {
+		return () => {
+			if (recorderRef.current && recorderRef.current.state !== 'inactive') {
+				recorderRef.current.stop();
+			}
+			streamRef.current?.getTracks().forEach((track) => track.stop());
+		};
+	}, []);
+
 	if (!isLoaded || !isSignedIn) return null;
 
 	return (
@@ -417,7 +593,7 @@ export function HelpAssistantChatbot() {
 								</p>
 								{!showHistory && (
 									<p className='text-[10px] text-muted-foreground leading-tight'>
-										{chatMode === 'video_search' ? 'Describe what you need' : 'BVIRAL assistant'}
+										AI routing enabled
 									</p>
 								)}
 							</div>
@@ -425,9 +601,6 @@ export function HelpAssistantChatbot() {
 						<div className='flex items-center gap-0.5'>
 							{!showHistory && (
 								<>
-									<Button type='button' variant={chatMode === 'video_search' ? 'default' : 'ghost'} size='sm' className='h-6 text-[10px] px-1.5' title='Toggle mode' onClick={() => setChatMode((m) => m === 'video_search' ? 'default' : 'video_search')}>
-										{chatMode === 'video_search' ? '🎬' : '💬'}
-									</Button>
 									<Button type='button' variant='ghost' size='sm' className='h-6 w-6 p-0 text-[10px]' title='History' onClick={() => { loadConversations(); setShowHistory(true); }}>
 										&#x1f4cb;
 									</Button>
@@ -497,7 +670,7 @@ export function HelpAssistantChatbot() {
 								)}
 								{isSending && (
 									<div className='max-w-[88%] rounded-lg px-2.5 py-1.5 text-[12px] bg-muted text-foreground animate-pulse'>
-										{chatMode === 'video_search' ? 'Searching videos…' : 'Thinking…'}
+										Thinking…
 									</div>
 								)}
 								<div ref={bottomRef} />
@@ -507,14 +680,39 @@ export function HelpAssistantChatbot() {
 								<Input
 									value={input}
 									onChange={(event) => setInput(event.target.value)}
-									placeholder={chatMode === 'video_search' ? 'Describe the videos you need…' : 'Ask a question…'}
-									disabled={isSending}
+									placeholder={isRecording ? 'Listening...' : 'Ask a question…'}
+									disabled={isSending || isTranscribing}
 									className='h-8 text-[12px]'
 								/>
-								<Button type='submit' disabled={isSending || !input.trim()} className='h-8 px-3 text-[12px]'>
+								<Button
+									type='button'
+									variant='outline'
+									onClick={isRecording ? stopRecording : startRecording}
+									disabled={isSending || isTranscribing}
+									className='h-8 px-2 text-[12px]'
+									title={isRecording ? 'Stop recording' : 'Start voice input'}
+								>
+									{isRecording ? '■' : '🎤'}
+								</Button>
+								<Button
+									type='submit'
+									disabled={isSending || isTranscribing || !input.trim()}
+									className='h-8 px-3 text-[12px]'
+								>
 									Send
 								</Button>
 							</form>
+							{(isRecording || isTranscribing || recordingError) && (
+								<div className='px-2.5 pb-2'>
+									<p className={`text-[11px] ${recordingError ? 'text-destructive' : 'text-muted-foreground'}`}>
+										{recordingError
+											? recordingError
+											: isTranscribing
+												? 'Transcribing audio...'
+												: 'Recording... click stop when done.'}
+									</p>
+								</div>
+							)}
 						</>
 					)}
 				</div>
@@ -529,7 +727,7 @@ export function HelpAssistantChatbot() {
 						<div className='flex items-center justify-between border-b px-3 py-2'>
 							<div className='min-w-0'>
 								<p className='text-sm font-semibold truncate'>
-									{currentViewerVideo?.title || currentViewerVideo?.video_id}
+									{activeViewerVideo?.title || activeViewerVideo?.video_id}
 								</p>
 								<p className='text-xs text-muted-foreground'>
 									Video {viewerIndex + 1} of {viewerVideos.length}
@@ -551,7 +749,7 @@ export function HelpAssistantChatbot() {
 									</div>
 								) : viewerUrl ? (
 									<video
-										key={`${currentViewerVideo?.video_id}-${viewerUrl}`}
+										key={`${activeViewerVideo?.video_id}-${viewerUrl}`}
 										src={viewerUrl}
 										controls
 										autoPlay
@@ -560,6 +758,65 @@ export function HelpAssistantChatbot() {
 								) : (
 									<div className='h-full w-full flex items-center justify-center text-xs text-white/80'>
 										No video URL available.
+									</div>
+								)}
+							</div>
+							<div className='mt-3 rounded-md border p-2.5 text-xs space-y-2'>
+								<div className='grid grid-cols-2 gap-2'>
+									<div>
+										<p className='text-muted-foreground'>Views</p>
+										<p className='font-medium'>
+											{typeof activeViewerVideo?.views === 'number'
+												? activeViewerVideo.views.toLocaleString()
+												: 'N/A'}
+										</p>
+									</div>
+									<div>
+										<p className='text-muted-foreground'>Duration</p>
+										<p className='font-medium'>
+											{formatDuration(activeViewerVideo?.duration) || 'N/A'}
+										</p>
+									</div>
+									<div>
+										<p className='text-muted-foreground'>Resolution</p>
+										<p className='font-medium'>{activeViewerVideo?.resolution || 'N/A'}</p>
+									</div>
+									<div>
+										<p className='text-muted-foreground'>Orientation</p>
+										<p className='font-medium'>{activeViewerVideo?.orientation || 'N/A'}</p>
+									</div>
+								</div>
+								<div>
+									<p className='text-muted-foreground'>Owner</p>
+									<p className='font-medium'>{activeViewerVideo?.owner || 'N/A'}</p>
+								</div>
+								<div>
+									<p className='text-muted-foreground'>Video ID</p>
+									<p className='font-mono break-all'>{activeViewerVideo?.video_id || 'N/A'}</p>
+								</div>
+								{activeViewerVideo?.description && (
+									<div>
+										<p className='text-muted-foreground'>Description</p>
+										<p className='leading-relaxed'>{activeViewerVideo.description}</p>
+									</div>
+								)}
+								{((activeViewerVideo?.keywords && activeViewerVideo.keywords.length > 0) ||
+									(activeViewerVideo?.tags && activeViewerVideo.tags.length > 0)) && (
+									<div>
+										<p className='text-muted-foreground mb-1'>Keywords / Tags</p>
+										<div className='flex flex-wrap gap-1'>
+											{[...(activeViewerVideo?.keywords || []), ...(activeViewerVideo?.tags || [])]
+												.filter(Boolean)
+												.slice(0, 20)
+												.map((item, idx) => (
+													<span
+														key={`${item}-${idx}`}
+														className='rounded bg-muted px-1.5 py-0.5 text-[11px]'
+													>
+														{item}
+													</span>
+												))}
+										</div>
 									</div>
 								)}
 							</div>

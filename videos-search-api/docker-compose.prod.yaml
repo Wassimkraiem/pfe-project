@@ -24,6 +24,9 @@ services:
       PYTHONUNBUFFERED: 1
       FLASK_APP: sev.app:bviral_app
       FLASK_DEBUG: 0 # Set to 0 for production
+      DISABLE_EMBEDDINGS: "false"
+      EMBEDDING_MODEL: all-MiniLM-L6-v2
+      EMBEDDING_LOCAL_ONLY: "false"
     env_file:
       - .env
     volumes:

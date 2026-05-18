@@ -51,7 +51,6 @@ export function LatestVideos() {
 	// Split videos into visible and hidden
 	const visibleVideos = videos.slice(0, VIDEOS_TO_SHOW);
 	const hiddenVideos = videos.slice(VIDEOS_TO_SHOW);
-	const blurredPreviewVideos = hiddenVideos.slice(0, VIDEOS_TO_SHOW);
 
 	if (loading) {
 		return (
@@ -83,7 +82,7 @@ export function LatestVideos() {
 				<div className='relative'>
 					{/* Blurred videos grid */}
 					<div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 blur-sm pointer-events-none opacity-60'>
-						{blurredPreviewVideos.map((video, index) => (
+						{hiddenVideos.map((video, index) => (
 							<VideoCard
 								key={video.id || `video-hidden-${index}`}
 								video={video}

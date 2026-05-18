@@ -1,0 +1,91 @@
+Metadata-Version: 2.4
+Name: agentic-helper
+Version: 0.1.0
+Summary: FastAPI chatbot with LangChain and RAG
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+Requires-Dist: fastapi>=0.116.0
+Requires-Dist: uvicorn[standard]>=0.35.0
+Requires-Dist: pydantic-settings>=2.10.1
+Requires-Dist: langchain>=0.3.27
+Requires-Dist: langchain-openai>=0.3.30
+Requires-Dist: langchain-text-splitters>=0.3.9
+Requires-Dist: langsmith>=0.1.99
+Requires-Dist: openpyxl>=3.1.5
+Requires-Dist: python-multipart>=0.0.20
+Requires-Dist: qdrant-client>=1.10.1
+Requires-Dist: httpx>=0.28.1
+Requires-Dist: langgraph>=0.4.1
+Provides-Extra: dev
+Requires-Dist: pytest>=8.4.2; extra == "dev"
+Requires-Dist: pytest-asyncio>=1.1.0; extra == "dev"
+Requires-Dist: httpx>=0.28.1; extra == "dev"
+
+# Agentic Helper API
+
+FastAPI chatbot with LangChain + OpenAI, external Qdrant for RAG, and optional LangSmith tracing/prompt management.
+
+## Features
+- Single chat endpoint with per-user in-memory history
+- RAG ingestion endpoints for JSON and Excel sources
+- Retrieval with Qdrant cosine similarity
+- API key auth (`x-api-key`) and user identifier header (`x-user-id`)
+- Hosted Qdrant support through `QDRANT_URL` and `QDRANT_API_KEY`
+- Optional LangSmith tracing and prompt loading
+- Startup chatbot initialization (`app.state`) for model and prompt control
+
+## Quick Start
+1. Copy env:
+   ```bash
+   cp .env.example .env
+   ```
+2. Set your external Qdrant endpoint:
+   ```bash
+   QDRANT_URL=https://your-qdrant-endpoint
+   QDRANT_API_KEY=...
+   ```
+3. Install dependencies:
+   ```bash
+   pip install -e .[dev]
+   ```
+4. Run the API:
+   ```bash
+   uvicorn app.main:app --reload --port 8003
+   ```
+
+The service creates the configured Qdrant collection automatically if it does not already exist.
+
+## LangSmith
+Tracing is enabled by configuration:
+```bash
+LANGSMITH_TRACING=true
+LANGSMITH_API_KEY=...
+LANGSMITH_PROJECT=agentic-helper
+```
+
+Prompts can stay in files and `.env`, or be pulled from LangSmith by setting any of these IDs:
+- `CHATBOT_SYSTEM_PROMPT_LANGSMITH`
+- `CHATBOT_RAG_CLASSIFIER_PROMPT_LANGSMITH`
+- `CHATBOT_INTEREST_CLASSIFIER_PROMPT_LANGSMITH`
+- `CHATBOT_INTERESTED_RESPONSE_PROMPT_LANGSMITH`
+- `CHATBOT_NOT_INTERESTED_RESPONSE_PROMPT_LANGSMITH`
+- `CHATBOT_VIDEO_FILTER_EXTRACTOR_PROMPT_LANGSMITH`
+- `VIDEO_SEARCH_SYSTEM_PROMPT_LANGSMITH`
+
+When a LangSmith prompt ID is configured, the app tries LangSmith first and falls back to file/env prompt configuration if the pull fails.
+
+## Docker
+The local Docker setup starts the API only. Qdrant is expected to be external and provided through `.env`.
+
+```bash
+docker compose up --build
+```
+
+## Notes
+- Chat history is in-memory now. It is scoped to the running API process and is not persisted across restarts.
+- Prompt files under `data/prompts/` still work without LangSmith.
+
+## API
+- `POST /api/v1/chat`
+- `POST /api/v1/rag/ingest`
+- `POST /api/v1/rag/ingest-excel`

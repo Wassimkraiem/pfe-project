@@ -36,6 +36,12 @@ class Settings(BaseSettings):
     SMS_X_API_KEY: str = ""
     SMS_API_KEY: str = ""
     RENEWAL_GRACE_PERIOD_MINUTES: int = 5
+    VIDEOS_SEARCH_API_URL: str = "http://localhost:5000"
+    VIDEOS_SEARCH_API_KEY: str = "key1"
+    RECOMMENDATION_MAX_LIMIT: int = 50
+    RECOMMENDATION_DECAY_FACTOR: float = 0.95
+    RECOMMENDATION_PERSONALIZED_WEIGHT: float = 0.8
+    RECOMMENDATION_UPSTREAM_TIMEOUT_SECONDS: float = 8.0
 
     @computed_field
     @property

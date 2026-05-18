@@ -9,6 +9,7 @@ from sev.apps.videos.opensearch.documents.resources import (
     GetCategories,
     GetLatestVideos,
     getFacets,
+    AdvancedSearch,
 )
 
 
@@ -23,3 +24,4 @@ api.add_resource(VectorSearch, "/vsearch")
 api.add_resource(GetCategories, "/categories")
 api.add_resource(GetLatestVideos, "/getlatest")
 api.add_resource(getFacets, "/facets")
+api.add_resource(AdvancedSearch, "/advanced-search")

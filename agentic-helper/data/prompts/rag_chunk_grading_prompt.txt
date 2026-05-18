@@ -1,0 +1,10 @@
+You are a relevance grader for a retrieval-augmented system.
+Given the user question and a retrieved knowledge chunk, decide whether the chunk
+contains information that is directly useful for answering the question.
+Return JSON with fields `id` (the chunk id) and `relevant` (true or false).
+
+User question: {question}
+
+Chunk id: {chunk_id}
+Chunk content:
+{chunk_content}

@@ -10,23 +10,44 @@ import {
 	BreadcrumbPage,
 	BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
-import axios from 'axios';
 import { formatVideoData } from '@/lib/utils';
 
 interface VideoPageProps {
-	params: { id: string };
+	params: Promise<{ id: string }>;
 }
+
+const VIDEOS_API_URL =
+	process.env.VIDEOS_API_URL ||
+	process.env.NEXT_PUBLIC_VIDEOS_API_URL ||
+	'http://localhost:5000';
 
 async function getVideoData(videoId: string) {
 	try {
-		const res = await axios.post(
-			'http://localhost:5000/api/videos/query',
-			{ video_id: videoId },
-			{ headers: { 'x-api-key': 'key1' } }
+		const response = await fetch(
+			`${VIDEOS_API_URL.replace(/\/$/, '')}/api/videos/query?offset=0&limit=1`,
+			{
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					'X-API-KEY':
+						process.env.VIDEOS_API_KEY ||
+						process.env.NEXT_PUBLIC_VIDEOS_API_KEY ||
+						'key1',
+				},
+				body: JSON.stringify({ video_id: videoId }),
+				cache: 'no-store',
+			}
 		);
 
+		if (!response.ok) {
+			console.error(`Video query failed with status ${response.status}`);
+			return null;
+		}
+
+		const payload = await response.json();
+
 		// Access videos array inside data
-		const videos = res.data?.data?.videos;
+		const videos = payload?.data?.videos;
 
 		if (!videos || videos.length === 0) {
 			console.error('No videos found in response');

@@ -122,3 +122,78 @@ def get_index(index_name):
     if not response:
         raise ValidationError({"error": "index does not exist"})
     return response
+
+
+def build_videos_v2_mapping(embedding_dimension: int = 1536) -> dict:
+    return {
+        "settings": {
+            "index": {
+                "knn": True,
+            }
+        },
+        "mappings": {
+            "properties": {
+                "video_id": {"type": "keyword"},
+                "title": {"type": "text", "fields": {"keyword": {"type": "keyword"}}},
+                "description": {"type": "text"},
+                "tags": {"type": "keyword"},
+                "categories": {"type": "keyword"},
+                "duration_sec": {"type": "float"},
+                "location": {"type": "keyword"},
+                "resolution": {"type": "keyword"},
+                "orientation": {"type": "keyword"},
+                "views_max": {"type": "long"},
+                "created_ts": {"type": "long"},
+                "owner_name": {"type": "keyword"},
+                "embedding": {
+                    "type": "knn_vector",
+                    "dimension": embedding_dimension,
+                },
+                "raw": {"type": "object", "enabled": False},
+                "rms": {"type": "object", "enabled": False},
+                "cts": {"type": "object", "enabled": False},
+            }
+        },
+    }
+
+
+def bootstrap_videos_v2_aliases(
+    index_name: str = "videos_v2",
+    read_alias: str = "videos_read",
+    write_alias: str = "videos_write",
+    embedding_dimension: int = 1536,
+) -> dict:
+    opensearch_client = g.video_opensearch
+
+    if not opensearch_client.indices.exists(index=index_name):
+        opensearch_client.indices.create(
+            index=index_name,
+            body=build_videos_v2_mapping(embedding_dimension=embedding_dimension),
+        )
+
+    actions = []
+    for alias_name in (read_alias, write_alias):
+        try:
+            alias_indexes = opensearch_client.indices.get_alias(name=alias_name)
+            for alias_index in alias_indexes.keys():
+                actions.append({"remove": {"index": alias_index, "alias": alias_name}})
+        except Exception:
+            # Alias may not exist yet; that's expected on first bootstrap.
+            pass
+
+    actions.extend(
+        [
+            {"add": {"index": index_name, "alias": read_alias}},
+            {"add": {"index": index_name, "alias": write_alias, "is_write_index": True}},
+        ]
+    )
+    opensearch_client.indices.update_aliases(body={"actions": actions})
+
+    aliases = opensearch_client.indices.get_alias(index=index_name)
+    return {
+        "status": "success",
+        "index_name": index_name,
+        "read_alias": read_alias,
+        "write_alias": write_alias,
+        "aliases": aliases.get(index_name, {}).get("aliases", {}),
+    }

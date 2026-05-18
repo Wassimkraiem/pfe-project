@@ -8,9 +8,13 @@ export const runtime = "nodejs";
 export async function POST(request: NextRequest) {
   try {
     const body = (await request.json()) as Record<string, unknown>;
+    const normalizedBody = { ...body };
+    if (normalizedBody.mode === "chat") {
+      normalizedBody.mode = "default";
+    }
     const userId =
-      typeof body.user_id === "string" && body.user_id.trim().length > 0
-        ? body.user_id
+      typeof normalizedBody.user_id === "string" && normalizedBody.user_id.trim().length > 0
+        ? normalizedBody.user_id
         : "web-anonymous";
 
     const response = await fetch(CHAT_API_URL, {
@@ -20,7 +24,7 @@ export async function POST(request: NextRequest) {
         "x-api-key": CHAT_API_KEY,
         "x-user-id": userId,
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify(normalizedBody),
       cache: "no-store",
     });
 

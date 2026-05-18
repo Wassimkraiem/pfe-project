@@ -1,0 +1,17 @@
+fastapi>=0.116.0
+uvicorn[standard]>=0.35.0
+pydantic-settings>=2.10.1
+langchain>=0.3.27
+langchain-openai>=0.3.30
+langchain-text-splitters>=0.3.9
+langsmith>=0.1.99
+openpyxl>=3.1.5
+python-multipart>=0.0.20
+qdrant-client>=1.10.1
+httpx>=0.28.1
+langgraph>=0.4.1
+
+[dev]
+pytest>=8.4.2
+pytest-asyncio>=1.1.0
+httpx>=0.28.1

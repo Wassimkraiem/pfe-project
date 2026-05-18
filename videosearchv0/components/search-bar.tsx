@@ -27,7 +27,7 @@ export function SearchBar() {
           placeholder="Search for videos, categories, or keywords..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          className="pl-16 h-16 text-xl border-2 focus:border-primary rounded-2xl shadow-lg"
+          className="pl-16 h-16 text-xl text-slate-900 placeholder:text-slate-500 caret-slate-900 bg-white border-2 border-blue-100 focus:border-primary rounded-2xl shadow-lg"
         />
       </div>
     </form>
