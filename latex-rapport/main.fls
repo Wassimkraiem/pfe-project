@@ -449,9 +449,6 @@ INPUT /usr/share/texmf/fonts/tfm/public/lm/ec-lmr12.tfm
 INPUT ./main.aux
 INPUT ./main.aux
 INPUT main.aux
-INPUT ./chapters/00_titlepage.aux
-INPUT ./chapters/00_titlepage.aux
-INPUT chapters/00_titlepage.aux
 INPUT ./chapters/02_dedication.aux
 INPUT ./chapters/02_dedication.aux
 INPUT chapters/02_dedication.aux
@@ -479,15 +476,12 @@ INPUT chapters/08_chapter3_architecture.aux
 INPUT ./chapters/09_chapter4_implementation.aux
 INPUT ./chapters/09_chapter4_implementation.aux
 INPUT chapters/09_chapter4_implementation.aux
-INPUT ./chapters/10_chapter5_ai_components.aux
-INPUT ./chapters/10_chapter5_ai_components.aux
-INPUT chapters/10_chapter5_ai_components.aux
 INPUT ./chapters/11_chapter6_results.aux
 INPUT ./chapters/11_chapter6_results.aux
 INPUT chapters/11_chapter6_results.aux
-INPUT ./chapters/12_chapter7_sprint5_agent.aux
-INPUT ./chapters/12_chapter7_sprint5_agent.aux
-INPUT chapters/12_chapter7_sprint5_agent.aux
+INPUT ./chapters/13_chapter8_sprint4_portals.aux
+INPUT ./chapters/13_chapter8_sprint4_portals.aux
+INPUT chapters/13_chapter8_sprint4_portals.aux
 INPUT ./chapters/14_chapter9_sprint7_personalization.aux
 INPUT ./chapters/14_chapter9_sprint7_personalization.aux
 INPUT chapters/14_chapter9_sprint7_personalization.aux
@@ -534,7 +528,6 @@ INPUT /usr/share/texlive/texmf-dist/tex/latex/graphics/lscape.sty
 INPUT /usr/share/texlive/texmf-dist/tex/latex/graphics/lscape.sty
 INPUT ./chapters/00_titlepage.tex
 INPUT ./chapters/00_titlepage.tex
-OUTPUT chapters/00_titlepage.aux
 INPUT ./chapters/00_titlepage.tex
 INPUT ./chapters/00_titlepage.tex
 INPUT chapters/00_titlepage.tex
@@ -874,24 +867,18 @@ INPUT ./chapters/09_chapter4_implementation.tex
 INPUT ./chapters/09_chapter4_implementation.tex
 INPUT chapters/09_chapter4_implementation.tex
 INPUT /usr/share/texmf/fonts/tfm/public/lm/ec-lmtt10.tfm
-INPUT ./figures/videosearch/browse page.png
-INPUT ./figures/videosearch/browse page.png
-INPUT ./figures/videosearch/browse page.png
-INPUT ./figures/videosearch/browse page.png
-INPUT ./figures/videosearch/browse page.png
-INPUT ./figures/videosearch/videodetails page.png
-INPUT ./figures/videosearch/videodetails page.png
-INPUT ./figures/videosearch/videodetails page.png
-INPUT ./figures/videosearch/videodetails page.png
-INPUT ./figures/videosearch/videodetails page.png
-INPUT ./chapters/10_chapter5_ai_components.tex
-INPUT ./chapters/10_chapter5_ai_components.tex
-OUTPUT chapters/10_chapter5_ai_components.aux
-INPUT ./chapters/10_chapter5_ai_components.tex
-INPUT ./chapters/10_chapter5_ai_components.tex
-INPUT chapters/10_chapter5_ai_components.tex
 INPUT /usr/share/texmf/fonts/tfm/public/lm/ec-lmtt10.tfm
 INPUT /usr/share/texmf/fonts/tfm/public/lm/ec-lmr6.tfm
+INPUT ./figures/videosearch/browse page.png
+INPUT ./figures/videosearch/browse page.png
+INPUT ./figures/videosearch/browse page.png
+INPUT ./figures/videosearch/browse page.png
+INPUT ./figures/videosearch/browse page.png
+INPUT ./figures/videosearch/videodetails page.png
+INPUT ./figures/videosearch/videodetails page.png
+INPUT ./figures/videosearch/videodetails page.png
+INPUT ./figures/videosearch/videodetails page.png
+INPUT ./figures/videosearch/videodetails page.png
 INPUT /usr/share/texmf/fonts/tfm/public/lm/ec-lmtk10.tfm
 INPUT /usr/share/texmf/fonts/tfm/public/lm/ec-lmtt8.tfm
 INPUT /usr/share/texmf/fonts/enc/dvips/lm/lm-mathex.enc
@@ -904,18 +891,12 @@ INPUT chapters/11_chapter6_results.tex
 INPUT /usr/share/texlive/texmf-dist/tex/latex/listings/lstlang1.sty
 INPUT /usr/share/texlive/texmf-dist/tex/latex/listings/lstlang1.sty
 INPUT /usr/share/texlive/texmf-dist/tex/latex/listings/lstlang1.sty
-INPUT ./figures/videosearch/chatbot screenshot question.png
-INPUT ./figures/videosearch/chatbot screenshot question.png
-INPUT ./figures/videosearch/chatbot screenshot question.png
-INPUT ./figures/videosearch/chatbot screenshot question.png
-INPUT ./figures/videosearch/chatbot screenshot question.png
-INPUT ./chapters/12_chapter7_sprint5_agent.tex
-INPUT ./chapters/12_chapter7_sprint5_agent.tex
-OUTPUT chapters/12_chapter7_sprint5_agent.aux
-INPUT ./chapters/12_chapter7_sprint5_agent.tex
-INPUT ./chapters/12_chapter7_sprint5_agent.tex
-INPUT chapters/12_chapter7_sprint5_agent.tex
 INPUT /usr/share/texmf/fonts/tfm/public/lm/ec-lmtk10.tfm
+INPUT ./figures/videosearch/chatbot screenshot question.png
+INPUT ./figures/videosearch/chatbot screenshot question.png
+INPUT ./figures/videosearch/chatbot screenshot question.png
+INPUT ./figures/videosearch/chatbot screenshot question.png
+INPUT ./figures/videosearch/chatbot screenshot question.png
 INPUT /usr/share/texmf/tex/latex/lm/ts1lmr.fd
 INPUT /usr/share/texmf/tex/latex/lm/ts1lmr.fd
 INPUT /usr/share/texmf/tex/latex/lm/ts1lmr.fd
@@ -941,6 +922,12 @@ INPUT /usr/share/texlive/texmf-dist/fonts/tfm/public/amsfonts/symbols/msbm7.tfm
 INPUT /usr/share/texlive/texmf-dist/fonts/tfm/public/amsfonts/symbols/msbm5.tfm
 INPUT /usr/share/texlive/texmf-dist/fonts/tfm/public/amsfonts/symbols/msbm5.tfm
 INPUT /usr/share/texmf/fonts/tfm/public/lm/ec-lmri8.tfm
+INPUT ./chapters/13_chapter8_sprint4_portals.tex
+INPUT ./chapters/13_chapter8_sprint4_portals.tex
+OUTPUT chapters/13_chapter8_sprint4_portals.aux
+INPUT ./chapters/13_chapter8_sprint4_portals.tex
+INPUT ./chapters/13_chapter8_sprint4_portals.tex
+INPUT chapters/13_chapter8_sprint4_portals.tex
 INPUT ./figures/videosearch/videosearch portal header.png
 INPUT ./figures/videosearch/videosearch portal header.png
 INPUT ./figures/videosearch/videosearch portal header.png
@@ -1080,9 +1067,6 @@ INPUT ./chapters/15_webographie.tex
 INPUT ./chapters/15_webographie.tex
 INPUT chapters/15_webographie.tex
 INPUT main.aux
-INPUT ./chapters/00_titlepage.aux
-INPUT ./chapters/00_titlepage.aux
-INPUT chapters/00_titlepage.aux
 INPUT ./chapters/02_dedication.aux
 INPUT ./chapters/02_dedication.aux
 INPUT chapters/02_dedication.aux
@@ -1110,15 +1094,12 @@ INPUT chapters/08_chapter3_architecture.aux
 INPUT ./chapters/09_chapter4_implementation.aux
 INPUT ./chapters/09_chapter4_implementation.aux
 INPUT chapters/09_chapter4_implementation.aux
-INPUT ./chapters/10_chapter5_ai_components.aux
-INPUT ./chapters/10_chapter5_ai_components.aux
-INPUT chapters/10_chapter5_ai_components.aux
 INPUT ./chapters/11_chapter6_results.aux
 INPUT ./chapters/11_chapter6_results.aux
 INPUT chapters/11_chapter6_results.aux
-INPUT ./chapters/12_chapter7_sprint5_agent.aux
-INPUT ./chapters/12_chapter7_sprint5_agent.aux
-INPUT chapters/12_chapter7_sprint5_agent.aux
+INPUT ./chapters/13_chapter8_sprint4_portals.aux
+INPUT ./chapters/13_chapter8_sprint4_portals.aux
+INPUT chapters/13_chapter8_sprint4_portals.aux
 INPUT ./chapters/14_chapter9_sprint7_personalization.aux
 INPUT ./chapters/14_chapter9_sprint7_personalization.aux
 INPUT chapters/14_chapter9_sprint7_personalization.aux

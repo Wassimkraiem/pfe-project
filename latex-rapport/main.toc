@@ -83,9 +83,9 @@
 \contentsline {subsection}{\numberline {4.3.8}Parallel Retrieval and Ranking Pipeline}{45}{subsection.4.3.8}%
 \contentsline {subsubsection}{Parallel Retrieval}{46}{figure.caption.66}%
 \contentsline {subsubsection}{RRF Fusion}{46}{figure.caption.66}%
-\contentsline {subsubsection}{Conditional Reranking}{47}{equation.4.1}%
-\contentsline {subsubsection}{Position-Aware Blend}{47}{equation.4.1}%
-\contentsline {section}{Conclusion}{47}{equation.4.2}%
+\contentsline {subsubsection}{Conditional Reranking}{47}{equation.4.3.1}%
+\contentsline {subsubsection}{Position-Aware Blend}{47}{equation.4.3.1}%
+\contentsline {section}{Conclusion}{47}{equation.4.3.2}%
 \contentsline {chapter}{\numberline {5}Sprint 3 — Agentic Helper: RAG, Classification, Search Orchestration and Voice Transcription}{48}{chapter.5}%
 \contentsline {section}{Introduction}{48}{section*.67}%
 \contentsline {section}{\numberline {5.1}Sprint Backlog}{49}{section.5.1}%
