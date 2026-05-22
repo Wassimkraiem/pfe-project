@@ -1,4 +1,4 @@
-\chapter{Sprint 2 — Video Indexing and Full-Stack Search}
+\chapter{Sprint 2: Video Indexing and Full-Stack Search}
 
 \section*{Introduction}
 \addcontentsline{toc}{section}{Introduction}
@@ -9,7 +9,9 @@ metadata, keyword (BM25) search over weighted fields, and aggregation-based face
 portal's filter sidebar. The second half extends this lexical baseline with a \textbf{semantic
 retrieval} layer, runs lexical and vector searches \textbf{in parallel}, and fuses their rankings
 with Reciprocal Rank Fusion (RRF). An optional reranker and a \textbf{position-aware blend}
-produce the final ranking before pagination.
+produce the final ranking before pagination. The sprint also delivers the \textbf{Video Search
+Portal} front-end (Next.js 15) that exposes the full search and browsing experience to users,
+as well as the playlist management views of the Authentic Rights Portal.
 
 %% ─── Sprint Backlog ─────────────────────────────────────────────────────────
 \section{Sprint Backlog}
@@ -33,6 +35,7 @@ T2.6 & US-08 & Filter clauses (categories, tags, duration, orientation, resoluti
 T2.7 & US-08 & Facet aggregation endpoint for the filter sidebar                     & 0.5 & M \\
 T2.8 & US-08 & Latest-videos and categories listing endpoints                        & 0.5 & S \\
 T2.9 & US-15 & Dockerization of the service                                          & 0.5 & M \\
+T5.8 & —     & Video Search Portal (Next.js 15, Radix UI, Tailwind)                  & 2   & M \\
 \midrule
 \multicolumn{5}{l}{\textit{Part B — Semantic Search and Hybrid Ranking}} \\
 \midrule
@@ -53,11 +56,32 @@ T3.10 & US-10 & Tunable strategy parameters and \texttt{rerank\_top\_n} cutoff  
 %% ─── Design ─────────────────────────────────────────────────────────────────
 \section{Design}
 
-\subsection{Use Case Diagram for Sprint 2}
+\subsection{Use Case Diagram}
 
 The video-search portal's anonymous visitor drives this sprint: browse, search, filter, and view
 video detail. These cases belong to the Video Search Portal boundary of the global use-case
-diagram (Figure~\ref{fig:uc_global} in Chapter~2).
+diagram (Figure~\ref{fig:uc_global} in Chapter~2). Figure~\ref{fig:uc_sprint2} details the
+sprint-level use cases.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{\detokenize{diagrams/sprint 2 use.drawio.png}}
+\caption{Use-case diagram — video indexing and full-stack search}
+\label{fig:uc_sprint2}
+\end{figure}
+
+\subsection{Class Diagram}
+
+Figure~\ref{fig:cd_sprint2} shows the data model and service structure for the Videos Search
+API. The core entities are the OpenSearch video document schema, the search request/response
+models, and the ranking pipeline components.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{\detokenize{diagrams/sprint 2 class.drawio.png}}
+\caption{Class diagram — Videos Search API data model and ranking pipeline}
+\label{fig:cd_sprint2}
+\end{figure}
 
 \subsection{Video Document Model}
 
@@ -276,8 +300,20 @@ counts for \texttt{categories}, \texttt{tags}, \texttt{resolutions}, and \texttt
 The portal uses these numbers to render the filter sidebar shown in
 Figure~\ref{fig:screen_vp_search}.
 
-\subsection{Delivered Interfaces — Part A}
+\subsection{Video Search Portal}
 
+The Video Search Portal (\texttt{videosearchv0/}) is the public-facing interface for video
+discovery and browsing:
+
+\begin{itemize}
+  \item \textbf{Next.js 15} with the App Router and React Server Components.
+  \item \textbf{Radix UI} primitives and \textbf{Tailwind CSS} for a dark, content-first UI.
+  \item \textbf{Clerk} for authentication and session management.
+  \item BFF routes (\texttt{app/api/chat/route.ts}, \texttt{app/api/transcribe/route.ts}) that
+    forward requests to the Agentic Helper and attach the required API key and user headers.
+\end{itemize}
+
+\subsection{Delivered Interfaces — Part A}
 
 \begin{figure}[H]
 \centering
@@ -438,6 +474,84 @@ with $w_r=0.8$ for ranks 1--5, $w_r=0.6$ for ranks 6--15, and $w_r=0.4$ for rank
 Default strategy parameters: \texttt{lex\_k=120}, \texttt{vec\_k=120}, \texttt{fuse\_k=150},
 \texttt{rerank\_top\_n=30}.
 
+\subsection{Delivered Interfaces — Portal and Playlists}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{\detokenize{figures/videosearch/videosearch portal header.png}}
+\caption{Video Search Portal — hero section with semantic search bar}
+\label{fig:vsp_hero}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{\detokenize{figures/videosearch/videosearch portal latest adition.png}}
+\caption{Video Search Portal — latest additions section on the authenticated dashboard}
+\label{fig:vsp_latest}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{\detokenize{figures/videosearch/videosearch portal categorie page.png}}
+\caption{Video Search Portal — browse by category page}
+\label{fig:vsp_categories}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\begin{subfigure}[t]{\textwidth}
+  \centering
+  \includegraphics[width=\textwidth]{\detokenize{figures/videosearch/videosearch home page part 4.png}}
+  \caption{Pricing plan and platform overview}
+\end{subfigure}
+\vspace{0.5em}
+\begin{subfigure}[t]{\textwidth}
+  \centering
+  \includegraphics[width=\textwidth]{\detokenize{figures/videosearch/videosearch home page part 5.png}}
+  \caption{Value proposition sections}
+\end{subfigure}
+\caption{Video Search Portal — public landing page (pricing and value propositions)}
+\label{fig:vsp_landing_1}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\begin{subfigure}[t]{\textwidth}
+  \centering
+  \includegraphics[width=\textwidth]{\detokenize{figures/videosearch/videosearch home page part 6.png}}
+  \caption{Creator testimonials and blog articles}
+\end{subfigure}
+\vspace{0.5em}
+\begin{subfigure}[t]{\textwidth}
+  \centering
+  \includegraphics[width=\textwidth]{\detokenize{figures/videosearch/videosearch home page part 7.png}}
+  \caption{Service offerings and getting started}
+\end{subfigure}
+\caption{Video Search Portal — testimonials and service overview}
+\label{fig:vsp_landing_2}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{\detokenize{figures/videosearch/videosearch home page part 8.png}}
+\caption{Video Search Portal — FAQ section and footer}
+\label{fig:vsp_faq_footer}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.97\textwidth]{\detokenize{figures/ar/ar playlist videos page.png}}
+\caption{Authentic Rights Portal — playlist videos}
+\label{fig:screen_ar_playlists}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.97\textwidth]{\detokenize{figures/ar/playlist video grid.png}}
+\caption{Authentic Rights Portal — playlist video grid}
+\label{fig:screen_ar_playlist_video_grid}
+\end{figure}
+
 \section*{Conclusion}
 \addcontentsline{toc}{section}{Conclusion}
 
@@ -445,5 +559,7 @@ Sprint 2 produced the complete video-search stack: a working lexical search engi
 keyword-driven browsing (Part A) complemented by an end-to-end semantic pipeline (Part B).
 Parallel retrieval, rank-based RRF fusion, conditional reranking, and the position-aware blend
 produce a stable, low-latency ranker that works well on both precise and intent-driven queries.
-The next sprint moves up one abstraction layer and implements the Agentic Helper's RAG and intent
-classifiers on top of this search foundation.
+The Video Search Portal exposes this engine through a polished public landing page, authenticated
+dashboard, category browsing, and video detail pages, while the Authentic Rights Portal delivers
+playlist management. The next sprint moves up one abstraction layer and implements the Agentic
+Helper's RAG and intent classifiers on top of this search foundation.

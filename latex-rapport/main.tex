@@ -45,19 +45,29 @@
 
 %% Headers & Footers
 \usepackage{fancyhdr}
+\setlength{\headheight}{14.5pt}
 \pagestyle{fancy}
 \fancyhf{}
-\fancyhead[L]{\small\leftmark}
-\fancyhead[R]{\small BVIRAL Platform}
-\fancyfoot[C]{\thepage}
-\renewcommand{\headrulewidth}{0.4pt}
+\lhead{\small\leftmark}
+\rhead{}
+\chead{}
+\cfoot{\thepage}
+\renewcommand{\headrulewidth}{0.5pt}
+\renewcommand{\footrulewidth}{0.5pt}
 
 %% Chapter style
-\usepackage{titlesec}
-\titleformat{\chapter}[display]
-  {\normalfont\huge\bfseries\color{blue!70!black}}
-  {\chaptertitlename\ \thechapter}{20pt}{\Huge}
-\titlespacing*{\chapter}{0pt}{50pt}{40pt}
+\usepackage[explicit,newlinetospace]{titlesec}
+\titleformat{\chapter}[block]{\usefont{T1}{phv}{m}{n}}{%
+  \begin{tabular}[b]{c}%
+    {\large\color{black}\textls*{CHAPITRE}}\\[6ex]%
+    {\color{black}\fontsize{35}{41}\selectfont\thechapter}%
+  \end{tabular}%
+}{1em}{%
+  \bfseries\fontsize{20}{30}\selectfont\color{black}%
+  \begin{tabular}[b]{!{\color{black}\vrule width 1.2pt\hspace{6pt}}p{\dimexpr\linewidth-4.5cm\relax}}
+    #1
+  \end{tabular}%
+}
 
 %% Miscellaneous
 \usepackage{enumitem}

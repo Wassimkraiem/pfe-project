@@ -131,12 +131,64 @@ combination.
 %% ─── 1.4 ─────────────────────────────────────────────────────────────────────
 \section{Working Methodology}
 
-\subsection{Agile Approach: Scrum-Inspired Sprints}
+\subsection{Adopted Methodology}
 
-The project used an \textbf{Agile} workflow organized into two-week sprints. Each sprint started
-with a planning session (user stories, acceptance criteria) and ended with a review and
-retrospective. The product backlog was maintained and prioritized together with the industrial
-supervisor.
+Given the exploratory nature of the project and the frequent feedback cycles with the industrial
+supervisor, an \textbf{Agile} approach organized into two-week sprints was selected. Each sprint
+followed a structured ceremony loop: planning, daily development, review, and retrospective.
+The product backlog was continuously prioritized in collaboration with the supervisor to reflect
+evolving business priorities.
+
+%% ── Classic vs Agile ──────────────────────────────────────────────────────────
+\subsection{Classic vs.\ Agile Methodology}
+
+\begin{table}[H]
+\centering
+\caption{Comparative study: Classic (Waterfall) vs.\ Agile methodology}
+\label{tab:method_compare}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabularx}{\textwidth}{>{\bfseries}lXX}
+\toprule
+Criterion & Classic (Waterfall) & Agile \\
+\midrule
+Delivery model    & Single final release at project end              & Incremental releases every sprint \\
+Flexibility       & Changes are costly once a phase is closed        & Changes welcomed at any sprint boundary \\
+Customer feedback & Collected only at the end                        & Integrated after every sprint review \\
+Risk management   & Late discovery of integration problems           & Risks surfaced and resolved each sprint \\
+Documentation     & Heavy upfront specification                      & Lightweight, just-enough documentation \\
+Team collaboration & Sequential hand-offs between roles              & Cross-functional team, daily collaboration \\
+Suitability       & Well-defined, stable-requirement projects        & Evolving requirements, innovation projects \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Classic methodologies follow a rigid, phase-by-phase pipeline (requirements $\rightarrow$ design
+$\rightarrow$ implementation $\rightarrow$ testing $\rightarrow$ deployment) where each phase must
+be fully completed before the next begins. While predictable for well-scoped projects, this model
+struggles when requirements evolve — a common reality in platform development. Agile addresses
+this by splitting work into short cycles, producing a working increment at the end of each one,
+and adapting the plan based on real feedback.
+
+%% ── Agile → Scrum ────────────────────────────────────────────────────────────
+\subsection{From Agile to Scrum}
+
+\textbf{Scrum} is the most widely adopted Agile framework. It operationalizes Agile values into
+a concrete, repeatable process built around three pillars — \textit{transparency},
+\textit{inspection}, and \textit{adaptation} — and three core roles:
+
+\begin{itemize}
+  \item \textbf{Product Owner:} owns the product backlog, prioritizes user stories, and
+    validates that each increment delivers business value. In this project, this role was held
+    by the industrial supervisor.
+
+  \item \textbf{Scrum Master:} facilitates ceremonies, removes impediments, and ensures the
+    team adheres to Scrum principles. This role was fulfilled by the project intern.
+
+  \item \textbf{Development Team:} a self-organizing group that designs, implements, tests,
+    and integrates features to produce a \textit{potentially shippable increment} each sprint.
+\end{itemize}
+
+Figure~\ref{fig:scrum} illustrates the Scrum cycle adopted throughout this project.
 
 \begin{figure}[H]
 \centering
@@ -181,7 +233,7 @@ System modeling used \textbf{UML 2.x}:
 %% ─── 1.5 ─────────────────────────────────────────────────────────────────────
 \section{Sprint Planning}
 
-The work was split into one requirements sprint (Sprint 0) followed by five implementation sprints.
+The work was split into one requirements sprint (Sprint 0) followed by four implementation sprints.
 Table~\ref{tab:sprint_plan} summarizes each sprint name and the delivered outcomes.
 
 \begin{table}[H]
@@ -193,11 +245,10 @@ Table~\ref{tab:sprint_plan} summarizes each sprint name and the delivered outcom
 \textbf{Sprint} & \textbf{Sprint name} & \textbf{What's done} \\
 \midrule
 Sprint 0 & Requirements and Project Setup & Defined actors and use cases, wrote the initial product backlog, validated architecture choices, and prepared the development environment. \\
-Sprint 1 & Onboarding, Auth, and Billing Core & Implemented authentication and onboarding workflows, integrated Stripe subscription payment, and added AR-API background processing with Celery tasks. \\
-Sprint 2 & Video Indexing and Full-Stack Search & Delivered OpenSearch ingestion, BM25 keyword search, and facet filters (Part A), then added semantic embeddings, kNN vector retrieval, parallel hybrid search, and position-aware rank fusion (Part B). \\
-Sprint 3 & Agentic Helper: RAG, Classification, Search Orchestration and Voice Transcription & Built the RAG pipeline with Qdrant, two-level routing/classification, and conversational memory (Phase A), then upgraded to the v2 deterministic orchestrator, Agentic RAG with CRAG-pattern re-retrieval, FAQ vector administration, and the Whisper voice transcription endpoint (Phase B). \\
-Sprint 4 & Next.js Portals & Delivered the Video Search Portal (Next.js 15) and Authentic Rights Portal (Next.js 16) wired to all backend services, with the portal-side mic button, the shared ChatbotWidget, and the admin workspace. \\
-Sprint 5 & Personalized Recommendation Engine & Implemented user-interest profiling from events, candidate generation + blending, trending integration, and anti-repetition ranking in recommendations. \\
+Sprint 1 & Onboarding, Auth, and Billing Core & Implemented authentication and onboarding workflows, integrated Stripe subscription payment, added AR-API background processing with Celery tasks, and delivered the Authentic Rights Portal front-end with billing admin workspace. \\
+Sprint 2 & Video Indexing and Full-Stack Search & Delivered OpenSearch ingestion, BM25 keyword search, and facet filters (Part A), then added semantic embeddings, kNN vector retrieval, parallel hybrid search, and position-aware rank fusion (Part B); also delivered the Video Search Portal front-end and playlist views. \\
+Sprint 3 & Agentic Helper: RAG, Classification, Search Orchestration and Voice Transcription & Built the RAG pipeline with Qdrant, two-level routing/classification, and conversational memory (Phase A), then upgraded to the v2 deterministic orchestrator, Agentic RAG with CRAG-pattern re-retrieval, FAQ vector administration, and the Whisper voice transcription endpoint (Phase B); also delivered voice input, the shared ChatbotWidget, and AI-backed admin tools in both portals. \\
+Sprint 4 & Personalized Recommendation Engine & Implemented user-interest profiling from events, candidate generation + blending, trending integration, and anti-repetition ranking in recommendations. \\
 \bottomrule
 \end{tabularx}
 \end{table}
@@ -205,7 +256,7 @@ Sprint 5 & Personalized Recommendation Engine & Implemented user-interest profil
 %% ─── 1.6 ─────────────────────────────────────────────────────────────────────
 \section{Project Timeline}
 
-The Gantt chart in Figure~\ref{fig:gantt} shows the planned distribution of the six sprints over
+The Gantt chart in Figure~\ref{fig:gantt} shows the planned distribution of the five sprints over
 the project duration.
 
 \begin{figure}[H]
@@ -232,7 +283,6 @@ the project duration.
 \draw[bar]  (5,-2.8)   rectangle (8,-3.4);   \node[lbl] at (-0.2,-3.1) {Sprint 2};
 \draw[bar]  (8,-3.8)   rectangle (11,-4.4);  \node[lbl] at (-0.2,-4.1) {Sprint 3};
 \draw[bar]  (11,-4.8)  rectangle (14,-5.4);  \node[lbl] at (-0.2,-5.1) {Sprint 4};
-\draw[bar]  (14,-5.8)  rectangle (16,-6.4);  \node[lbl] at (-0.2,-6.1) {Sprint 5};
 \end{tikzpicture}%
 }
 \caption{Gantt chart of the project sprints}
@@ -244,17 +294,18 @@ For clarity, the concrete work completed in each sprint is summarized below:
   \item \textbf{Sprint 0}: Defined actors and use cases, prepared the initial product backlog,
     validated the target architecture, and set up the development environment.
   \item \textbf{Sprint 1}: Implemented authentication and onboarding flows, integrated Stripe
-    subscriptions, and added AR-API background processing with Celery tasks.
+    subscriptions, added AR-API background processing with Celery tasks, and delivered the
+    Authentic Rights Portal front-end with a billing and moderation admin workspace.
   \item \textbf{Sprint 2}: Delivered OpenSearch ingestion, BM25 keyword search, facet-based
     filtering (Part A), then semantic embeddings, kNN retrieval, parallel hybrid search, and
-    position-aware rank fusion (Part B).
+    position-aware rank fusion (Part B); also delivered the Video Search Portal front-end and
+    playlist management views.
   \item \textbf{Sprint 3}: Built the Agentic Helper RAG foundation with Qdrant retrieval,
     routing/classification, and conversation memory (Phase A), then upgraded to the v2
     deterministic orchestrator, Agentic RAG pipeline, and the Whisper voice transcription
-    endpoint (Phase B).
-  \item \textbf{Sprint 4}: Delivered the Video Search Portal and Authentic Rights Portal wired
-    to all backend services, with the portal-side mic integration and the admin workspace.
-  \item \textbf{Sprint 5}: Implemented recommendation event tracking, user-interest profiling,
+    endpoint (Phase B); also delivered portal-side voice input, the shared ChatbotWidget, and
+    AI-backed admin tools (conversation supervision, chatbot tester, FAQ manager).
+  \item \textbf{Sprint 4}: Implemented recommendation event tracking, user-interest profiling,
     candidate blending, trending integration, and anti-repetition ranking.
 \end{itemize}
 

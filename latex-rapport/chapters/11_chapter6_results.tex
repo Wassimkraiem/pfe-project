@@ -1,4 +1,4 @@
-\chapter{Sprint 3 — Agentic Helper: RAG, Classification, Search Orchestration and Voice Transcription}
+\chapter{Sprint 3: Agentic Helper: RAG, Classification, Search Orchestration and Voice Transcription}
 
 \section*{Introduction}
 \addcontentsline{toc}{section}{Introduction}
@@ -11,8 +11,8 @@ delivers the backbone: a \textbf{Retrieval-Augmented Generation (RAG)} layer on 
 \textbf{v2 architecture}: a deterministic \textbf{search orchestrator}, a structured
 \textbf{filter extractor}, a CRAG-pattern \textbf{Agentic RAG} loop with relevance grading and
 corrective re-retrieval, a \textbf{FAQ vector administration} API, and an \textbf{OpenAI Whisper}
-voice transcription endpoint. Together they form the complete AI backend that the Next.js portals
-consume in Sprint 4.
+voice transcription endpoint. The portal-side integration — voice input, the shared chatbot
+widget, and AI-powered admin tools — is also delivered as part of this sprint.
 
 %% ─── Sprint Backlog ─────────────────────────────────────────────────────────
 \section{Sprint Backlog}
@@ -51,6 +51,9 @@ T5.15 & US-11 & Query rewriting for retrieval-optimised RAG queries             
 T5.16 & US-11 & Relevance grading with corrective re-retrieval (CRAG pattern)     & 1   & S \\
 T5.17 & US-11 & Semantic query enrichment for video search (vector optimisation)  & 0.5 & S \\
 T5.5  & US-13 & \texttt{/api/v1/transcribe} endpoint forwarding to OpenAI Whisper & 1   & M \\
+T5.6  & US-13 & Next.js \texttt{/api/transcribe} BFF route (proxy to Agentic Helper) & 0.5 & M \\
+T5.7  & US-13 & Mic button with \texttt{MediaRecorder} in both portals              & 1   & M \\
+T5.10 & —     & ChatbotWidget component shared by both portals                    & 1   & M \\
 \bottomrule
 \end{tabularx}
 \end{table}
@@ -58,7 +61,7 @@ T5.5  & US-13 & \texttt{/api/v1/transcribe} endpoint forwarding to OpenAI Whispe
 %% ─── Design ─────────────────────────────────────────────────────────────────
 \section{Design}
 
-\subsection{Use Case Diagram for Sprint 3}
+\subsection{Use Case Diagram}
 
 Sprint 3 refines the \emph{AI chat assistant} and \emph{AI support chat} use cases of the global
 use-case diagram (Figure~\ref{fig:uc_global}) with the internal branching shown in
@@ -66,37 +69,24 @@ Figure~\ref{fig:uc_chat}.
 
 \begin{figure}[H]
 \centering
-\begin{tikzpicture}[x=1cm, y=1cm]
-\draw[ucboundary, minimum width=9.6cm, minimum height=8cm]
-  (-4.8, -5) rectangle (4.8, 3);
-\node[font=\small\bfseries, text=gray!60!black] at (0, 3.3) {AI Chat Experience};
-
-\node[usecase] (uc_msg)   at (0,  2.2) {Send chat message};
-\node[usecase] (uc_rag)   at (-3, 0.4) {RAG grounded answer};
-\node[usecase] (uc_agent) at ( 3, 0.4) {Invoke video-search agent};
-\node[usecase] (uc_hist)  at (0, -1.4) {View conversation history};
-
-\draw[ucincl] (uc_msg)   -- node[left, pos=0.5]{\guillemotleft include\guillemotright}  (uc_rag);
-\draw[ucincl] (uc_msg)   -- node[right, pos=0.5]{\guillemotleft include\guillemotright} (uc_agent);
-\draw[ucassoc] (uc_msg.south) to[bend right=8] (uc_hist.north);
-
-%% Actors
-\umlactor{-6.5}{1.5}{User};
-\umlactor{ 6.5}{1.5}{OpenAI};
-\draw[ucassoc] (-5.9, 1.6) -- (uc_msg);
-\draw[ucassoc] ( 5.9, 1.6) -- (uc_rag);
-\draw[ucassoc] ( 5.9, 1.2) -- (uc_agent);
-\end{tikzpicture}
-\caption{AI chat use-case diagram (Sprint 3 scope)}
+\includegraphics[width=\textwidth]{\detokenize{diagrams/sprint 3 use.drawio.png}}
+\caption{Use-case diagram — Agentic Helper: RAG, classification and voice transcription}
 \label{fig:uc_chat}
 \end{figure}
 
-\subsection{Class Diagram for Sprint 3}
+\subsection{Class Diagram}
 
 Sprint 3 owns the Agentic Helper knowledge layer: an external Qdrant collection for stored FAQ
 chunks, a payload index on \texttt{source} for source-level replacement, and an in-memory
 sliding history used to keep recent conversational context without requiring a relational chatbot
-database. The full schema is summarized in Chapter~2, Section~2.8.
+database. Figure~\ref{fig:cd_sprint3} shows the full class structure.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{\detokenize{diagrams/sprint 3 class.drawio.png}}
+\caption{Class diagram — Agentic Helper service architecture}
+\label{fig:cd_sprint3}
+\end{figure}
 
 Phase B introduces the \texttt{VideoSearchFilterPlan} Pydantic model as the typed contract
 between the router and the deterministic search service:
@@ -651,6 +641,79 @@ operators to:
 This administrative surface is consumed by the portal BFF routes to power FAQ maintenance screens
 without direct access to Qdrant credentials from the frontend.
 
+\subsection{Voice Input Integration}
+
+Both portals expose a microphone button that consumes the \texttt{/api/v1/transcribe} endpoint
+built in Phase B (see Figure~\ref{fig:seq_transcribe}). The portal-side flow is:
+
+\begin{enumerate}
+  \item The user clicks the mic button; the browser starts \texttt{MediaRecorder} and streams
+    audio chunks.
+  \item When the user stops speaking, the recorded \texttt{Blob} is sent to the Next.js BFF
+    route (\texttt{/api/transcribe}), which proxies it to the Agentic Helper with the API key
+    attached server-side.
+  \item The transcribed text is received and pre-fills the chat input field, ready to submit.
+\end{enumerate}
+
+\subsection{Shared ChatbotWidget}
+
+Both portals embed a shared \texttt{ChatbotWidget} component that:
+\begin{itemize}
+  \item Maintains the chat message list and typing state in React state.
+  \item Renders video result cards directly in the conversation flow when the Agentic Helper
+    returns a \texttt{videos[]} array.
+  \item Includes the mic button that triggers the Whisper transcription flow.
+  \item Persists conversation continuity through the \texttt{X-User-Id} header.
+\end{itemize}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.55\textwidth]{\detokenize{figures/videosearch/chatbotscreenshort videosearch.png}}
+\caption{Video Search Portal — AI chatbot returning video results for a natural language query}
+\label{fig:screen_vp_chat}
+\end{figure}
+
+\subsection{AI Admin Tools}
+
+The Authentic Rights Portal admin workspace includes three AI-backed management surfaces that
+consume the Agentic Helper directly through BFF routes:
+
+\begin{itemize}
+  \item \textbf{Global conversation supervision}: an admin-only AR-API endpoint
+    (\texttt{GET /conversations/admin/all}) aggregates conversation histories across users so
+    the support team can inspect titles, participants, message counts, and latest activity.
+  \item \textbf{Admin chatbot tester}: a dedicated console lets administrators switch between
+    \texttt{chat} mode and \texttt{video\_search} mode, test the assistant against both
+    behaviors, and inspect returned text or video cards in one interface.
+  \item \textbf{FAQ management on vector storage}: the FAQ manager is connected to the RAG
+    vector store rather than a static list. Through BFF routes, the portal consumes
+    vector-management endpoints for listing, semantic search, creation, update, and deletion.
+\end{itemize}
+
+This design keeps the browser isolated from the Agentic Helper API key while still exposing a
+usable knowledge-base administration surface.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{\detokenize{figures/ar/ar admin user conversations.png}}
+\caption{Admin — User Conversations: inspect full chat transcripts across all users}
+\label{fig:admin_user_conversations}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{\detokenize{figures/ar/ar admin chatbot conversationt tester.png}}
+\caption{Admin — Chatbot Tester: test the assistant in chat and video-search modes with saved sessions}
+\label{fig:admin_chatbot_tester}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{\detokenize{figures/ar/ar admin faq manager.png}}
+\caption{Admin — FAQ Manager: create, edit, and publish FAQ entries backed by Qdrant vector storage}
+\label{fig:admin_faq_manager}
+\end{figure}
+
 \section*{Conclusion}
 \addcontentsline{toc}{section}{Conclusion}
 
@@ -658,5 +721,8 @@ Sprint 3 produced the complete Agentic Helper backend: the RAG knowledge base, t
 classification pipeline, versioned prompts, and conversation memory (Phase A), followed by the
 v2 explicit router, deterministic video-search planner, Agentic RAG pipeline with query rewriting
 and corrective re-retrieval, FAQ vector administration API, and the Whisper-backed voice
-transcription endpoint (Phase B). The next sprint wires this AI backend to the two Next.js
-portals and delivers the complete user-facing interface.
+transcription endpoint (Phase B). The portal-side integration completes the sprint: both portals
+gained a voice input flow via the Whisper BFF route and a shared ChatbotWidget, while the
+Authentic Rights Portal admin workspace gained AI-backed conversation supervision, a chatbot
+tester, and a vector-backed FAQ manager. The next sprint implements the personalized
+recommendation engine on top of this complete foundation.

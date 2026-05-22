@@ -1,4 +1,4 @@
-\chapter{Sprint 1 — Authentication, Onboarding and Payments}
+\chapter{Sprint 1: Authentication, Onboarding and Payments}
 
 \section*{Introduction}
 \addcontentsline{toc}{section}{Introduction}
@@ -6,7 +6,9 @@
 Sprint 1 delivers the foundation of the Authentic Rights Portal: Clerk-backed authentication,
 the multi-step onboarding state machine, Stripe embedded checkout with digital agreement signing,
 and the Celery-driven notification pipeline. The main service produced during this sprint is the
-\textbf{AR-API} (FastAPI, PostgreSQL, Redis, Celery).
+\textbf{AR-API} (FastAPI, PostgreSQL, Redis, Celery). The sprint also includes the Authentic
+Rights Portal front-end (Next.js 16, MUI) that exposes all these features to end users, along
+with an admin workspace for moderation and billing management.
 
 %% ─── Sprint Backlog ─────────────────────────────────────────────────────────
 \section{Sprint Backlog}
@@ -30,6 +32,7 @@ T1.8 & US-04 & Stripe webhook with HMAC verification               & 1 & M \\
 T1.9 & US-05 & Celery email task (MJML + signed PDF attachment)    & 1 & M \\
 T1.10 & US-05 & Slack Block Kit notification task                  & 0.5 & S \\
 T1.11 & US-06 & Dashboard endpoints (/me, renewal, billing portal) & 1 & M \\
+T5.9  & —     & Authentic Rights Portal (Next.js 16, MUI, Stripe.js) front-end & 2 & M \\
 \bottomrule
 \end{tabularx}
 \end{table}
@@ -37,7 +40,7 @@ T1.11 & US-06 & Dashboard endpoints (/me, renewal, billing portal) & 1 & M \\
 %% ─── Design ─────────────────────────────────────────────────────────────────
 \section{Design}
 
-\subsection{Use Case Diagram for Sprint 1}
+\subsection{Use Case Diagram}
 
 Figure~\ref{fig:uc_onboarding} details the onboarding process, the most complex multi-step flow
 in the platform. A custom quote branch applies when the creator's channel exceeds 2M followers
@@ -45,12 +48,12 @@ or uses an unsupported platform.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=\textwidth]{\detokenize{diagrams/sprint 1 use case.png}}
-\caption{Sprint 1 use-case diagram — onboarding, authentication and payments}
+\includegraphics[width=\textwidth]{\detokenize{diagrams/sprint 1 use.drawio.png}}
+\caption{Use-case diagram — onboarding, authentication and payments}
 \label{fig:uc_onboarding}
 \end{figure}
 
-\subsection{Class Diagram for Sprint 1}
+\subsection{Class Diagram}
 
 Figure~\ref{fig:cd_sprint1} shows the AR-API domain model for Sprint 1. The core entities are
 \texttt{Users}, \texttt{Channels}, \texttt{OnboardingSessions}, \texttt{OnboardingEmails},
@@ -58,8 +61,8 @@ and \texttt{Payments}, together with their enumeration types.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=\textwidth]{\detokenize{diagrams/sprint 1 class diagram.png}}
-\caption{Sprint 1 class diagram — AR-API domain model (authentication, onboarding and payments)}
+\includegraphics[width=\textwidth]{\detokenize{diagrams/sprint 1 class.drawio(1).png}}
+\caption{Class diagram — AR-API domain model (authentication, onboarding and payments)}
 \label{fig:cd_sprint1}
 \end{figure}
 
@@ -417,6 +420,34 @@ All tasks use \texttt{autoretry\_for=(ConnectionError, TimeoutError, OSError)} w
 backoff (max 600\,s, up to 5 retries). Every send is persisted in \texttt{onboarding\_emails} for
 idempotency and reminder throttling.
 
+\subsection{Authentic Rights Portal}
+
+The Authentic Rights Portal (\texttt{authentic\_rights\_portal/}) is the front-end for
+onboarding, billing, and content management:
+
+\begin{itemize}
+  \item \textbf{Next.js 16} with the App Router.
+  \item \textbf{Material UI (MUI)} for dashboard-style components and data tables.
+  \item \textbf{Clerk} for authentication session management.
+  \item \textbf{Stripe.js} embedded checkout and \textbf{Stripe Elements} for the digital
+    agreement signature.
+  \item BFF routes for protected AR-API calls, keeping server credentials out of the browser.
+\end{itemize}
+
+\subsection{Admin Workspace}
+
+The portal includes an \textbf{admin workspace} dedicated to billing operations and video
+moderation. Two areas were delivered in this sprint:
+
+\begin{itemize}
+  \item \textbf{Custom quotes management}: administrators can review incoming quote requests,
+    assign a Stripe price ID to each, and track payment state and account creation status
+    across all custom-plan clients.
+  \item \textbf{Submitted-video moderation}: administrators can review user-submitted clips,
+    add moderation notes, and trigger a \emph{fake accept} or reject status used for internal
+    validation before any real library ingestion workflow is automated.
+\end{itemize}
+
 \subsection{Delivered Interfaces}
 
 \begin{figure}[H]
@@ -433,10 +464,61 @@ idempotency and reminder throttling.
 \label{fig:screen_ar_payment_details}
 \end{figure}
 
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.97\textwidth]{\detokenize{figures/ar/ser dashboard.png}}
+\caption{Authentic Rights Portal — dashboard overview}
+\label{fig:screen_ar_dashboard}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.97\textwidth]{\detokenize{figures/ar/ar manage subscription page.png}}
+\caption{Authentic Rights Portal — manage subscription}
+\label{fig:screen_ar_manage_subscription}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.97\textwidth]{\detokenize{figures/ar/ar support and help page.png}}
+\caption{Authentic Rights Portal — support and help}
+\label{fig:screen_ar_support_help}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.97\textwidth]{\detokenize{figures/ar/ar submit video page.png}}
+\caption{Authentic Rights Portal — submit video form}
+\label{fig:screen_ar_submit_video}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{\detokenize{figures/ar/ar admin custom quotes.png}}
+\caption{Admin — Pending Custom Quotes: review quote requests and assign a Stripe price ID}
+\label{fig:admin_custom_quotes}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{\detokenize{figures/ar/ar admin quotes status.png}}
+\caption{Admin — Custom Quotes Status: track payment state and account creation for each quote}
+\label{fig:admin_quotes_status}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{\detokenize{figures/ar/ar admin submited video review.png}}
+\caption{Admin — Submitted Videos: approve or reject user-submitted clips before library ingestion}
+\label{fig:admin_submitted_videos}
+\end{figure}
+
 \section*{Conclusion}
 \addcontentsline{toc}{section}{Conclusion}
 
 Sprint 1 delivered a production-ready onboarding funnel: Clerk authentication, channel analysis,
-custom-quote routing, signed Stripe checkout, and the Celery notification pipeline. The AR-API
-layering, Alembic-managed schema, and idempotent email tracking make this foundation safe to
-extend in later sprints. The next sprint focuses on the Videos Search API and keyword search.
+custom-quote routing, signed Stripe checkout, and the Celery notification pipeline. The Authentic
+Rights Portal front-end exposes this foundation to end users through a dashboard, subscription
+management, video submission, and an admin workspace for billing moderation. The AR-API layering,
+Alembic-managed schema, and idempotent email tracking make this foundation safe to extend in
+later sprints. The next sprint focuses on the Videos Search API and keyword search.

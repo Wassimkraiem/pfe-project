@@ -1,5 +1,5 @@
 % $ biblatex auxiliary file $
-% $ biblatex bbl format version 3.2 $
+% $ biblatex bbl format version 3.3 $
 % Do not modify the above lines!
 %
 % This is an auxiliary file used by the 'biblatex' package.
@@ -18,8 +18,8 @@
 
 
 \refsection{0}
-  \datalist[entry]{none/global//global/global}
-    \entry{crag_2024}{misc}{}
+  \datalist[entry]{none/global//global/global/global}
+    \entry{crag_2024}{misc}{}{}
       \name{author}{4}{}{%
         {{hash=731e6291cc95e1f0c93882858d726783}{%
            family={Yan},
@@ -42,12 +42,14 @@
            given={Zhen-Hua},
            giveni={Z\bibinithyphendelim H\bibinitperiod}}}%
       }
-      \strng{namehash}{9990155a98431aa6077f2f7dc5522c9b}
+      \strng{namehash}{20b90422a544333c6b50bc99e219c0eb}
       \strng{fullhash}{7e878d437241d60c59f4ac7f4710a1ba}
+      \strng{fullhashraw}{7e878d437241d60c59f4ac7f4710a1ba}
       \strng{bibnamehash}{7e878d437241d60c59f4ac7f4710a1ba}
       \strng{authorbibnamehash}{7e878d437241d60c59f4ac7f4710a1ba}
-      \strng{authornamehash}{9990155a98431aa6077f2f7dc5522c9b}
+      \strng{authornamehash}{20b90422a544333c6b50bc99e219c0eb}
       \strng{authorfullhash}{7e878d437241d60c59f4ac7f4710a1ba}
+      \strng{authorfullhashraw}{7e878d437241d60c59f4ac7f4710a1ba}
       \field{sortinit}{1}
       \field{sortinithash}{4f6aaa89bab872aa0999fec09ff8e98a}
       \field{labelnamesource}{author}
@@ -59,7 +61,7 @@
       \verb 2401.15884
       \endverb
     \endentry
-    \entry{query_rewriting_rag}{misc}{}
+    \entry{query_rewriting_rag}{misc}{}{}
       \name{author}{5}{}{%
         {{hash=7c8b2bbaca43ace3e1264c2e37a6ff1d}{%
            family={Ma},
@@ -87,12 +89,14 @@
            given={Nan},
            giveni={N\bibinitperiod}}}%
       }
-      \strng{namehash}{237f5898ea8e2505294090be9616dc32}
+      \strng{namehash}{161488bc7dc57411ab9cb5ce8b1c7efd}
       \strng{fullhash}{3ae7bad3f984d86acb1c450774f0f7b6}
+      \strng{fullhashraw}{3ae7bad3f984d86acb1c450774f0f7b6}
       \strng{bibnamehash}{3ae7bad3f984d86acb1c450774f0f7b6}
       \strng{authorbibnamehash}{3ae7bad3f984d86acb1c450774f0f7b6}
-      \strng{authornamehash}{237f5898ea8e2505294090be9616dc32}
+      \strng{authornamehash}{161488bc7dc57411ab9cb5ce8b1c7efd}
       \strng{authorfullhash}{3ae7bad3f984d86acb1c450774f0f7b6}
+      \strng{authorfullhashraw}{3ae7bad3f984d86acb1c450774f0f7b6}
       \field{sortinit}{2}
       \field{sortinithash}{8b555b3791beccb63322c22f3320aa9a}
       \field{labelnamesource}{author}

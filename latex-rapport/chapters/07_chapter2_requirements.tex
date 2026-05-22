@@ -1,4 +1,4 @@
-\chapter{Requirements Specification (Sprint 0)}
+\chapter{Sprint 0: Requirements Specification}
 
 \section*{Introduction}
 \addcontentsline{toc}{section}{Introduction}
@@ -185,74 +185,7 @@ system actors that interact with each.
 
 \begin{figure}[H]
 \centering
-\begin{tikzpicture}[x=1cm, y=1cm]
-
-%% ── Video Search Portal boundary ───────────────────────────────────────────
-\draw[ucboundary, minimum width=6.2cm, minimum height=7.2cm]
-  (-4.4, 0.0) rectangle (-1.2, 7.2);
-\node[font=\small\bfseries, text=gray!60!black] at (-2.8, 7.5)
-  {Video Search Portal};
-
-\node[usecase] (uc1) at (-2.8, 6.2) {Browse videos};
-\node[usecase] (uc2) at (-2.8, 5.0) {Search videos};
-\node[usecase] (uc3) at (-2.8, 3.8) {View video detail};
-\node[usecase] (uc4) at (-2.8, 2.6) {AI chat assistant};
-\node[usecase] (uc5) at (-2.8, 1.4) {Transcribe audio};
-
-%% ── Authentic Rights Portal boundary ───────────────────────────────────────
-\draw[ucboundary, minimum width=6.2cm, minimum height=10.8cm]
-  (1.4, -0.6) rectangle (7.6, 10.2);
-\node[font=\small\bfseries, text=gray!60!black] at (4.5, 10.5)
-  {Authentic Rights Portal};
-
-\node[usecase] (uc6)  at (4.5,  9.2) {Submit channels};
-\node[usecase] (uc7)  at (4.5,  8.0) {Complete checkout};
-\node[usecase] (uc8)  at (4.5,  6.8) {Sign agreement};
-\node[usecase] (uc9)  at (4.5,  5.6) {Manage account};
-\node[usecase] (uc10) at (4.5,  4.4) {Manage playlists};
-\node[usecase] (uc11) at (4.5,  3.2) {Submit videos};
-\node[usecase] (uc12) at (4.5,  2.0) {AI support chat};
-\node[usecase] (uc13) at (4.5,  0.8) {Review quotes};
-
-%% ── include / extend ────────────────────────────────────────────────────────
-%% "Complete checkout" includes "Sign agreement"
-\draw[ucincl] (uc7) -- node[right, pos=0.5]{\guillemotleft include\guillemotright} (uc8);
-%% "AI chat" can extend to "Transcribe audio" in the VP
-\draw[ucincl] (uc5) -- node[right, pos=0.5]{\guillemotleft extend\guillemotright} (uc4);
-
-%% ── Actors ──────────────────────────────────────────────────────────────────
-% Anonymous Visitor
-\umlactor{-6.0}{5.2}{Anonymous\\Visitor}
-% Auth. Creator
-\umlactor{-6.0}{2.0}{Auth.\\Creator/Partner}
-% Administrator
-\umlactor{8.8}{0.8}{Administrator}
-% Stripe (system)
-\umlactor{8.8}{8.0}{Stripe}
-% Clerk (system)
-\umlactor{8.8}{5.6}{Clerk}
-
-%% ── Associations: Anonymous Visitor ────────────────────────────────────────
-\draw[ucassoc] (-5.4, 5.5)  -- (uc1);
-\draw[ucassoc] (-5.4, 5.0)  -- (uc2);
-\draw[ucassoc] (-5.4, 4.5)  -- (uc3);
-\draw[ucassoc] (-5.4, 4.0)  -- (uc4);
-
-%% ── Associations: Auth. Creator ────────────────────────────────────────────
-\draw[ucassoc] (-5.4, 2.3)  -- (uc2);
-\draw[ucassoc] (-5.4, 1.9)  -- (uc6);
-\draw[ucassoc] (-5.4, 1.7)  -- (uc7);
-\draw[ucassoc] (-5.4, 1.5)  -- (uc9);
-\draw[ucassoc] (-5.4, 1.3)  -- (uc10);
-\draw[ucassoc] (-5.4, 1.1)  -- (uc11);
-\draw[ucassoc] (-5.4, 0.9)  -- (uc12);
-
-%% ── Associations: External systems ─────────────────────────────────────────
-\draw[ucassoc] (8.1, 8.0) -- (uc7);
-\draw[ucassoc] (8.1, 5.6) -- (uc9);
-\draw[ucassoc] (8.1, 0.8) -- (uc13);
-
-\end{tikzpicture}
+\includegraphics[width=\textwidth]{\detokenize{diagrams/global use.drawio.png}}
 \caption{Global use-case diagram of the BVIRAL Platform}
 \label{fig:uc_global}
 \end{figure}
@@ -507,64 +440,108 @@ HTTP REST, and there is no shared database.
 
 \begin{figure}[H]
 \centering
-\begin{tikzpicture}[
-  fe/.style={draw=blue!60!black, fill=blue!10, rounded corners=4pt,
-             minimum width=3.3cm, minimum height=0.85cm,
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[x=1cm, y=1cm,
+  %% ── Node styles ──────────────────────────────────────────────────────────
+  %% fe  : min-width 5.5 cm  → half = 2.75 cm
+  %% api : min-width 4.5 cm  → half = 2.25 cm
+  %% db  : min-width 3.0 cm  → half = 1.50 cm
+  %% ext : min-width 3.2 cm  → half = 1.60 cm
+  fe/.style={draw=blue!65!black, fill=blue!10, rounded corners=6pt,
+             minimum width=5.5cm, minimum height=1.15cm,
+             font=\small\bfseries, align=center, text=blue!15!black},
+  api/.style={draw=teal!65!black, fill=teal!10, rounded corners=6pt,
+              minimum width=4.5cm, minimum height=1.15cm,
+              font=\small\bfseries, align=center, text=teal!15!black},
+  db/.style={draw=violet!60, fill=violet!8, rounded corners=6pt,
+             minimum width=3.0cm, minimum height=0.95cm,
              font=\small\bfseries, align=center},
-  api/.style={draw=teal!60!black, fill=teal!10, rounded corners=4pt,
-              minimum width=3.3cm, minimum height=0.85cm,
+  ext/.style={draw=gray!55, fill=gray!8, rounded corners=6pt,
+              minimum width=3.2cm, minimum height=0.95cm,
               font=\small\bfseries, align=center},
-  db/.style={draw=violet!60, fill=violet!8, rounded corners=4pt,
-             minimum width=2.9cm, minimum height=0.75cm,
-             font=\small, align=center},
-  ext/.style={draw=gray!55, fill=gray!8, rounded corners=4pt,
-              minimum width=2.6cm, minimum height=0.75cm,
-              font=\small, align=center},
-  arr/.style={->, >=Stealth, thick}
+  %% ── Arrow styles ─────────────────────────────────────────────────────────
+  arr/.style={->, >=Stealth, thick, gray!65},
+  extarr/.style={->, >=Stealth, semithick, dashed, gray!50}
 ]
-%% Frontends
-\node[fe]  (vp)  at (-4.2, 4) {Video Search\\Portal\\(Next.js 15)};
-\node[fe]  (arp) at ( 4.2, 4) {Authentic Rights\\Portal\\(Next.js 16)};
 
-%% APIs
-\node[api] (arapi) at ( 4.2, 1.5) {AR-API\\(FastAPI :8001)};
-\node[api] (vsapi) at ( 0,   1.5) {Videos Search API\\(Flask :5000)};
-\node[api] (ahai)  at (-4.2, 1.5) {Agentic Helper\\(FastAPI :8003)};
+%% ── ROW 1  Client Layer  (y = 8.5) ──────────────────────────────────────────
+%% VSP  x=[-6.75, -1.25]   ARP  x=[1.25, 6.75]   gap = 2.5 cm
+\node[fe] (vp)  at (-4.0, 8.5) {Video Search Portal\\{\scriptsize Next.js 15 · Tailwind}};
+\node[fe] (arp) at ( 4.0, 8.5) {Authentic Rights Portal\\{\scriptsize Next.js 16 · MUI}};
 
-%% Data stores
-\node[db] (pg1) at ( 4.2,-0.6) {PostgreSQL\\(AR DB :5433)};
-\node[db] (os)  at ( 0,  -0.6) {OpenSearch\\(:9200)};
-\node[db] (pg2) at (-4.2,-0.6) {Qdrant Cloud\\(:6333)};
-\node[db] (rd)  at ( 7.0,-0.6) {Redis\\(:6379)};
+%% ── ROW 2  Backend Services  (y = 5.5) ──────────────────────────────────────
+%% Ahai x=[-9.25,-4.75]  VSAPI x=[-2.25,2.25]  ARAPI x=[4.75,9.25]  gap=2.5cm
+\node[api] (ahai)  at (-7.0, 5.5) {Agentic Helper\\{\scriptsize FastAPI · :8003}};
+\node[api] (vsapi) at ( 0.0, 5.5) {Videos Search API\\{\scriptsize Flask · :5000}};
+\node[api] (arapi) at ( 7.0, 5.5) {AR-API\\{\scriptsize FastAPI · :8001}};
 
-%% External
-\node[ext] (stripe) at ( 7.0, 1.5) {Stripe};
-\node[ext] (clerk)  at ( 7.0, 4.0) {Clerk};
-\node[ext] (dam)    at ( 4.2,-2.3) {DAM Provider};
-\node[ext] (oai)    at (-7.0, 1.5) {OpenAI\\API};
+%% ── ROW 3  Data Layer  (y = 2.5) ────────────────────────────────────────────
+%% Qdrant x=[-8.5,-5.5]  OS x=[-2.0,1.0]  PG x=[2.0,5.0]  RD x=[6.5,9.5]
+%% gaps:  Qdrant–OS = 3.5 cm   OS–PG = 1.0 cm   PG–RD = 1.5 cm
+\node[db] (qdrant) at (-7.0, 2.5) {Qdrant Cloud\\{\scriptsize :6333}};
+\node[db] (os)     at (-0.5, 2.5) {OpenSearch\\{\scriptsize :9200}};
+\node[db] (pg)     at ( 3.5, 2.5) {PostgreSQL\\{\scriptsize :5433}};
+\node[db] (rd)     at ( 8.0, 2.5) {Redis\\{\scriptsize :6379}};
 
-%% Arrows – frontends to APIs
-\draw[arr] (vp)  -- (vsapi);
+%% ── External Left ────────────────────────────────────────────────────────────
+\node[ext] (oai) at (-11.5, 5.5) {OpenAI API};
+
+%% ── External Right ───────────────────────────────────────────────────────────
+\node[ext] (stripe) at (12.0, 6.5) {Stripe};
+\node[ext] (clerk)  at (12.0, 5.5) {Clerk};
+\node[ext] (dam)    at (12.0, 4.5) {DAM Provider};
+
+%% ── Layer background boxes (manually bounded — no fit/positioning issues) ───
+\begin{scope}[on background layer]
+  %% Client layer  — covers fe nodes ±0.6 cm padding
+  \fill[blue!3, rounded corners=8pt]
+    (-7.2, 7.7) rectangle (7.2, 9.3);
+  \draw[blue!30, dashed, rounded corners=8pt, line width=0.8pt]
+    (-7.2, 7.7) rectangle (7.2, 9.3);
+  %% Backend services — covers api nodes ±0.6 cm padding
+  \fill[teal!3, rounded corners=8pt]
+    (-9.7, 4.7) rectangle (9.7, 6.3);
+  \draw[teal!30, dashed, rounded corners=8pt, line width=0.8pt]
+    (-9.7, 4.7) rectangle (9.7, 6.3);
+  %% Data layer — covers db nodes ±0.6 cm padding
+  \fill[violet!3, rounded corners=8pt]
+    (-9.0, 1.7) rectangle (9.9, 3.3);
+  \draw[violet!25, dashed, rounded corners=8pt, line width=0.8pt]
+    (-9.0, 1.7) rectangle (9.9, 3.3);
+\end{scope}
+
+%% ── Layer Labels (anchored at top-left of each box) ─────────────────────────
+\node[font=\fontsize{7.5}{9}\selectfont\bfseries, text=blue!45!gray,
+      anchor=south west] at (-7.0, 9.3) {\strut CLIENT LAYER};
+\node[font=\fontsize{7.5}{9}\selectfont\bfseries, text=teal!45!gray,
+      anchor=south west] at (-9.5, 6.3) {\strut BACKEND SERVICES};
+\node[font=\fontsize{7.5}{9}\selectfont\bfseries, text=violet!50!gray,
+      anchor=south west] at (-8.8, 3.3) {\strut DATA LAYER};
+
+%% ── Arrows: Frontends → Backend APIs ─────────────────────────────────────────
 \draw[arr] (vp)  -- (ahai);
+\draw[arr] (vp)  -- (vsapi);
 \draw[arr] (arp) -- (arapi);
-\draw[arr] (arp) -- (ahai);
+%% ARP also uses the Agentic Helper (AI chatbot) — routed above backend layer
+\draw[arr] (arp.west) to[out=200, in=30] (ahai.north);
 
-%% Agentic helper to video search
-\draw[arr] (ahai) -- (vsapi);
+%% ── Arrows: Inter-service (Agentic Helper → Videos Search API) ───────────────
+\draw[arr] (ahai.east) -- (vsapi.west);
 
-%% APIs to data stores
-\draw[arr] (arapi) -- (pg1);
-\draw[arr] (arapi) -- (rd);
-\draw[arr] (vsapi) -- (os);
-\draw[arr] (ahai)  -- (pg2);
+%% ── Arrows: Backend APIs → Data Stores ───────────────────────────────────────
+\draw[arr] (ahai.south)       -- (qdrant.north);
+\draw[arr] (vsapi.south)      -- (os.north);
+\draw[arr] (arapi.south west) -- (pg.north);
+\draw[arr] (arapi.south east) -- (rd.north);
 
-%% External services
-\draw[arr] (arapi) -- (stripe);
-\draw[arr] (arapi) -- (clerk);
-\draw[arr] (arapi) -- (dam);
-\draw[arr] (ahai)  -- (oai);
+%% ── Arrows: External Services (dashed) ───────────────────────────────────────
+\draw[extarr] (ahai.west)  -- (oai.east);
+\draw[extarr] (arapi.east) -- (stripe.west);
+\draw[extarr] (arapi.east) -- (clerk.west);
+\draw[extarr] (arapi.east) -- (dam.west);
 
-\end{tikzpicture}
+\end{tikzpicture}%
+}
 \caption{BVIRAL Platform — global microservices architecture}
 \label{fig:arch_global}
 \end{figure}
@@ -572,94 +549,12 @@ HTTP REST, and there is no shared database.
 %% ─── 2.8 ─────────────────────────────────────────────────────────────────────
 \section{Static Design: Class Diagram}
 
-\subsection{AR-API PostgreSQL Schema}
+\subsection{Global Class Diagram}
 
 \begin{figure}[H]
 \centering
-\begin{tikzpicture}[
-  tbl/.style={draw=blue!55!black, fill=blue!6, rounded corners=4pt,
-              font=\fontsize{7}{8}\selectfont, inner sep=5pt},
-  rel/.style={->, >=Stealth, thick, blue!50}
-]
-%% Tables
-\node[tbl, text width=3.3cm] (users) at (0,0.2) {
-  \textbf{users}\\[2pt]\hrule\vspace{3pt}
-  \textit{id}, clerk\_id, email\\
-  name, account\_status\\
-  renewal\_failed\_at\\
-  media\_access\_suspended
-};
-\node[tbl, text width=3.3cm] (channels) at (4.6,2.7) {
-  \textbf{channels}\\[2pt]\hrule\vspace{3pt}
-  \textit{id}, user\_id (FK)\\
-  platform, url\\
-  username, follower\_count\\
-  verification\_status
-};
-\node[tbl, text width=3.3cm] (payments) at (4.6,0.2) {
-  \textbf{payments}\\[2pt]\hrule\vspace{3pt}
-  \textit{id}, user\_id (FK)\\
-  stripe\_subscription\_id\\
-  status, plan, amount\\
-  signature, signed\_at, metadata
-};
-\node[tbl, text width=3.3cm] (onb) at (-4.6,2.7) {
-  \textbf{onboarding\_sessions}\\[2pt]\hrule\vspace{3pt}
-  \textit{id} (UUID), email\\
-  payment\_email, price\_id\\
-  step (enum), session\_details\\
-  custom\_quote\_submitted\\
-  payment\_received
-};
-\node[tbl, text width=3.4cm] (emails) at (-4.6,0.2) {
-  \textbf{onboarding\_emails}\\[2pt]\hrule\vspace{3pt}
-  \textit{id}, onboarding\_session\_id (FK)\\
-  recipient\_email, email\_code\\
-  status, sent\_at\\
-  metadata (JSONB)
-};
-\node[tbl, text width=3.3cm] (pl) at (-4.6,-2.3) {
-  \textbf{playlists}\\[2pt]\hrule\vspace{3pt}
-  \textit{id}, user\_id (FK)\\
-  title, description\\
-  created\_at, updated\_at
-};
-\node[tbl, text width=3.3cm] (plv) at (0,-2.3) {
-  \textbf{playlist\_videos}\\[2pt]\hrule\vspace{3pt}
-  \textit{id}, playlist\_id (FK)\\
-  video\_id, position\\
-  created\_at
-};
-\node[tbl, text width=3.3cm] (conv) at (4.6,-2.3) {
-  \textbf{conversations}\\[2pt]\hrule\vspace{3pt}
-  \textit{id}, user\_id (FK)\\
-  title, created\_at\\
-  updated\_at
-};
-\node[tbl, text width=3.3cm] (msg) at (0,-4.8) {
-  \textbf{conversation\_messages}\\[2pt]\hrule\vspace{3pt}
-  \textit{id}, conversation\_id (FK)\\
-  role, content\\
-  created\_at
-};
-\node[tbl, text width=3.3cm] (sub) at (4.6,-4.8) {
-  \textbf{video\_submissions}\\[2pt]\hrule\vspace{3pt}
-  \textit{id}, user\_id (FK)\\
-  video\_url, status (enum)\\
-  submitted\_at
-};
-%% Relations
-\draw[rel] (users.east)  -- (channels.west);
-\draw[rel] (users.east)  -- (payments.west);
-\draw[rel] (users.west)  -- (onb.east);
-\draw[rel] (onb.south)   -- (emails.north);
-\draw[rel] (users.south west) -- (pl.north);
-\draw[rel] (pl.east)     -- (plv.west);
-\draw[rel] (users.south east) -- (conv.north);
-\draw[rel] (conv.west)   -- (msg.east);
-\draw[rel] (users.south) -- (sub.north);
-\end{tikzpicture}
-\caption{AR-API PostgreSQL entity-relationship diagram}
+\includegraphics[width=\textwidth]{\detokenize{diagrams/global class dag.drawio.png}}
+\caption{Global class diagram of the BVIRAL Platform}
 \label{fig:er_arapi}
 \end{figure}
 
